@@ -332,6 +332,39 @@ public class IsothermalGasFlowSolverTests
         Assert.Contains(s.Warnings, w => w.Contains("Swamee-Jain"));
     }
 
+    /// <summary>
+    /// Corresponding-states Z models plug into the solver unchanged; a
+    /// correlation used outside its fitted range is reported, not hidden.
+    /// Typical gas (Kay): Tpc = 200.6 K, so 260 K gives Tpr = 1.30, below
+    /// Papay's validated 1.4. DAK (1.0 ≤ Tpr) stays silent at the same state.
+    /// </summary>
+    [Fact]
+    public void CompressibilityCorrelationOutsideItsRange_ShouldProduceWarning()
+    {
+        var segment = Segment(0.5, 50_000, 0.0);
+        var cold = Temperature.FromKelvins(260.0);
+        var p1 = Pressure.FromMegapascals(7.0);
+        var m = MassFlow.FromKilogramsPerSecond(100.0);
+
+        GasFlowSolution papay = IsothermalGasFlowSolver.ForMixture(
+                NaturalGasMixtures.TypicalNaturalGas,
+                CompressibilityModelType.Papay,
+                new LeeGonzalezEakinViscosityModel())
+            .SolveOutletPressure(segment, cold, p1, m);
+
+        GasFlowSolution dak = IsothermalGasFlowSolver.ForMixture(
+                NaturalGasMixtures.TypicalNaturalGas,
+                CompressibilityModelType.DranchukAbouKassem,
+                new LeeGonzalezEakinViscosityModel())
+            .SolveOutletPressure(segment, cold, p1, m);
+
+        Print(papay);
+        Print(dak);
+
+        Assert.Contains(papay.Warnings, w => w.Contains("Papay"));
+        Assert.DoesNotContain(dak.Warnings, w => w.Contains("Compressibility model"));
+    }
+
     [Fact]
     public void LargePressureDrop_ShouldProduceWarning()
     {

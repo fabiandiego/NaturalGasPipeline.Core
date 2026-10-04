@@ -349,6 +349,21 @@ public sealed class IsothermalGasFlowSolver
                 $"(Re = {avg.Reynolds:E3}, ε/D = {relativeRoughness:E3}).");
         }
 
+        if (_compressibility is ICompressibilityCorrelation correlation)
+        {
+            var temperature = Temperature.FromKelvins(t);
+
+            foreach ((string label, double p) in new[] { ("P1", p1), ("P2", p2), ("P_avg", avg.PressureAverage) })
+            {
+                if (!correlation.IsWithinValidatedRange(Pressure.FromPascals(p), temperature))
+                {
+                    warnings.Add(
+                        $"Compressibility model {correlation.Name} is used outside its validated range " +
+                        $"at {label} = {p / 1.0e3:F1} kPa, T = {t:F2} K.");
+                }
+            }
+        }
+
         if (avg.Reynolds < 4000.0)
         {
             warnings.Add(

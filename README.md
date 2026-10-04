@@ -16,13 +16,17 @@ src/
     Common/      PhysicalConstants (R, g)
     Flow/        caudal másico, volumétrico real y estándar, conversiones
     Gas/         GasProperties (foto inmutable de un estado)
-    Numerics/    CubicEquationSolver
+    Numerics/    CubicEquationSolver, BrentRootSolver
     Pipeline/    Pipe (DE, espesor), PipeSegment (DI, L, ε, Δz)
   NaturalGasPipeline.Thermodynamics  → Core
     Components/      GasComponent, StandardGasComponents
     Mixtures/        GasMixture, NaturalGasMixtures, parámetros de interacción binaria
+    Characterization/ γ ↔ M (DryAirMolarMass: ISO 6976:2016, GPA 2145-09, GTHPS 28.96, 29),
+                      pseudocríticas: Kay, Sutton, Standing (gas natural / condensado),
+                      corrección Wichert-Aziz (CO₂, H₂S)
     State/           GasState
-    Compressibility/ ICompressibilityModel: ideal, Z constante, Peng-Robinson, SRK
+    Compressibility/ ICompressibilityModel: ideal, Z constante, Peng-Robinson, SRK,
+                     estados correspondientes (DAK, Hall-Yarborough, Papay), CNGA
     Viscosity/       IViscosityModel: Lee-Gonzalez-Eakin, constante
   NaturalGasPipeline.Hydraulics      → Core, Thermodynamics
     Friction/    IFrictionFactorModel: Colebrook-White, Haaland, Swamee-Jain, Churchill,
