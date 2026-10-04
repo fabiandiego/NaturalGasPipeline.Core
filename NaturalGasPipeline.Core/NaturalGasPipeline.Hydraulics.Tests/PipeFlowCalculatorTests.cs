@@ -39,8 +39,8 @@ public class PipeFlowCalculatorTests
         Length diameter =
             Length.FromMeters(0.5);
 
-        ActualVolumeFlow flowRate =
-            ActualVolumeFlow.FromCubicMetersPerSecond(10.0);
+        ActualVolumetricFlow flowRate =
+            ActualVolumetricFlow.FromCubicMetersPerSecond(10.0);
 
         Speed velocity =
             PipeFlowCalculator.CalculateVelocity(
@@ -61,7 +61,7 @@ public class PipeFlowCalculatorTests
         Speed velocity =
             PipeFlowCalculator.CalculateVelocity(
                 Length.FromMeters(0.5),
-                ActualVolumeFlow.FromCubicMetersPerSecond(-10.0));
+                ActualVolumetricFlow.FromCubicMetersPerSecond(-10.0));
 
         _output.WriteLine($"Velocity: {velocity.MetersPerSecond} m/s");
 

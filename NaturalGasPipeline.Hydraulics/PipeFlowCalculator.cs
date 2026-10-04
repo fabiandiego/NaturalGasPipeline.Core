@@ -36,7 +36,7 @@ public static class PipeFlowCalculator
     /// </summary>
     public static Speed CalculateVelocity(
         Length internalDiameter,
-        ActualVolumeFlow actualVolumetricFlow)
+        ActualVolumetricFlow actualVolumetricFlow)
     {
         double flow =
             actualVolumetricFlow.Value.CubicMetersPerSecond;

@@ -70,7 +70,7 @@ public class PressureDropCalculatorTests
         Length pipeLength = Length.FromMeters(2130.0);
         Density density = Density.FromKilogramsPerCubicMeter(910.0);
 
-        ActualVolumeFlow flow =
+        ActualVolumetricFlow flow =
             new(VolumeFlow.FromCubicMetersPerHour(6.82));
 
         // Act

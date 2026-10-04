@@ -10,9 +10,9 @@ namespace NaturalGasPipeline.Core.Flow;
 /// conditions travel with the value. This removes the silent assumption of
 /// which standard a number belongs to.
 /// </summary>
-public sealed record StandardVolumeFlow
+public sealed record StandardVolumetricFlow
 {
-    public StandardVolumeFlow(
+    public StandardVolumetricFlow(
         VolumeFlow value,
         StandardFlowConditions conditions)
     {

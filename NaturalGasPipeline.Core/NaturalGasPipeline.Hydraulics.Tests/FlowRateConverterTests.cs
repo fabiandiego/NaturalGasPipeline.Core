@@ -26,8 +26,8 @@ public class FlowRateConverterTests
     public void ActualVolumeAndMassFlowConversions_ShouldBeConsistent()
     {
         // Arrange
-        ActualVolumeFlow actualFlow =
-            ActualVolumeFlow.FromCubicMetersPerSecond(10.0);
+        ActualVolumetricFlow actualFlow =
+            ActualVolumetricFlow.FromCubicMetersPerSecond(10.0);
 
         Density density =
             Density.FromKilogramsPerCubicMeter(20.0);
@@ -38,7 +38,7 @@ public class FlowRateConverterTests
                 actualFlow,
                 density);
 
-        ActualVolumeFlow convertedFlow =
+        ActualVolumetricFlow convertedFlow =
             FlowRateConverter.ConvertMassToActualVolume(
                 massFlow,
                 density);
@@ -76,7 +76,7 @@ public class FlowRateConverterTests
         const double expected = 236.448300362;
 
         // Act
-        StandardVolumeFlow standardFlow =
+        StandardVolumetricFlow standardFlow =
             FlowRateConverter.ConvertMassToStandardVolume(
                 massFlow,
                 molarMass,
@@ -110,7 +110,7 @@ public class FlowRateConverterTests
             CompressibilityFactor = 0.9976
         };
 
-        StandardVolumeFlow standardFlow =
+        StandardVolumetricFlow standardFlow =
             FlowRateConverter.ConvertMassToStandardVolume(
                 original, molarMass, conditions);
 

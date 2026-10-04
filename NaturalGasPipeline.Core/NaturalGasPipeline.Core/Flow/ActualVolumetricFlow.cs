@@ -9,9 +9,9 @@ namespace NaturalGasPipeline.Core.Flow;
 /// to pass a standard volumetric flow where an actual one is required:
 /// the compiler rejects the mistake instead of the result being silently wrong.
 /// </summary>
-public readonly record struct ActualVolumeFlow(VolumeFlow Value)
+public readonly record struct ActualVolumetricFlow(VolumeFlow Value)
 {
-    public static ActualVolumeFlow FromCubicMetersPerSecond(double value) =>
+    public static ActualVolumetricFlow FromCubicMetersPerSecond(double value) =>
         new(VolumeFlow.FromCubicMetersPerSecond(value));
 
     public override string ToString() =>

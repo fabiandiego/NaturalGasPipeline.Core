@@ -13,7 +13,7 @@ public static class FlowRateConverter
 
     /// <summary>ṁ = Q_actual · ρ(P, T)</summary>
     public static MassFlow ConvertActualVolumeToMass(
-        ActualVolumeFlow actualVolumetricFlow,
+        ActualVolumetricFlow actualVolumetricFlow,
         Density flowingDensity)
     {
         double q = actualVolumetricFlow.Value.CubicMetersPerSecond;
@@ -26,7 +26,7 @@ public static class FlowRateConverter
     }
 
     /// <summary>Q_actual = ṁ / ρ(P, T)</summary>
-    public static ActualVolumeFlow ConvertMassToActualVolume(
+    public static ActualVolumetricFlow ConvertMassToActualVolume(
         MassFlow massFlow,
         Density flowingDensity)
     {
@@ -36,11 +36,11 @@ public static class FlowRateConverter
         RequireFinite(m, nameof(massFlow));
         RequirePositive(rho, nameof(flowingDensity));
 
-        return ActualVolumeFlow.FromCubicMetersPerSecond(m / rho);
+        return ActualVolumetricFlow.FromCubicMetersPerSecond(m / rho);
     }
 
     /// <summary>Q_std = ṁ · Z_std · R · T_std / (P_std · M)</summary>
-    public static StandardVolumeFlow ConvertMassToStandardVolume(
+    public static StandardVolumetricFlow ConvertMassToStandardVolume(
         MassFlow massFlow,
         MolarMass molarMass,
         StandardFlowConditions standardConditions)
@@ -61,14 +61,14 @@ public static class FlowRateConverter
             * standardConditions.Temperature.Kelvins
             / (standardConditions.Pressure.Pascals * mm);
 
-        return new StandardVolumeFlow(
+        return new StandardVolumetricFlow(
             VolumeFlow.FromCubicMetersPerSecond(q),
             standardConditions);
     }
 
     /// <summary>ṁ = Q_std · P_std · M / (Z_std · R · T_std)</summary>
     public static MassFlow ConvertStandardVolumeToMass(
-        StandardVolumeFlow standardVolumetricFlow,
+        StandardVolumetricFlow standardVolumetricFlow,
         MolarMass molarMass)
     {
         ArgumentNullException.ThrowIfNull(standardVolumetricFlow);
