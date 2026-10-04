@@ -1,0 +1,49 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37710.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Core", "NaturalGasPipeline.Core\NaturalGasPipeline.Core.csproj", "{C4E445E4-0646-49E7-A556-92DD9522DA3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Tests", "NaturalGasPipeline.Tests\NaturalGasPipeline.Tests.csproj", "{09DA5B1B-E678-43A4-A845-2FD9F5899624}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Hydraulics", "..\NaturalGasPipeline.Hydraulics\NaturalGasPipeline.Hydraulics.csproj", "{F63D203B-5DF4-4206-88F0-76D0530273B6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Mechanics", "..\NaturalGasPipeline.Mechanics\NaturalGasPipeline.Mechanics.csproj", "{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Hydraulics.Tests", "NaturalGasPipeline.Hydraulics.Tests\NaturalGasPipeline.Hydraulics.Tests.csproj", "{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0121B387-7EE0-44A7-B8E1-CC47D5981FBF}
+	EndGlobalSection
+EndGlobal
