@@ -50,27 +50,9 @@ public static class ReynoldsNumberCalculator
                 "Dynamic viscosity must be finite and greater than zero.");
         }
 
-        // Diagnostic output: remove after investigating the discrepancy.
-        System.Console.WriteLine(
-            $"Mass flow: {massFlowValue:R} kg/s");
-
-        System.Console.WriteLine(
-            $"Diameter: {diameter:R} m");
-
-        System.Console.WriteLine(
-            $"Viscosity: {viscosity:R} Pa·s");
-
-        double denominator =
-            System.Math.PI * diameter * viscosity;
-
-        System.Console.WriteLine(
-            $"Denominator: {denominator:R}");
-
         double reynolds =
-            4.0 * massFlowValue / denominator;
-
-        System.Console.WriteLine(
-            $"Reynolds number: {reynolds:R}");
+            4.0 * massFlowValue
+            / (System.Math.PI * diameter * viscosity);
 
         return reynolds;
     }

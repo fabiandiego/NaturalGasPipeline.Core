@@ -1,9 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 using UnitsNet;
 using Xunit;
 using Xunit.Abstractions;
@@ -21,12 +15,19 @@ public class FlowRateConverterTests
         _output = output;
     }
 
+    private static StandardFlowConditions IdealIsoConditions() => new()
+    {
+        Temperature = Temperature.FromKelvins(288.15),
+        Pressure = Pressure.FromPascals(101325.0),
+        CompressibilityFactor = 1.0
+    };
+
     [Fact]
     public void ActualVolumeAndMassFlowConversions_ShouldBeConsistent()
     {
         // Arrange
-        VolumeFlow actualFlow =
-            VolumeFlow.FromCubicMetersPerSecond(10.0);
+        ActualVolumeFlow actualFlow =
+            ActualVolumeFlow.FromCubicMetersPerSecond(10.0);
 
         Density density =
             Density.FromKilogramsPerCubicMeter(20.0);
@@ -37,89 +38,122 @@ public class FlowRateConverterTests
                 actualFlow,
                 density);
 
-        VolumeFlow convertedFlow =
+        ActualVolumeFlow convertedFlow =
             FlowRateConverter.ConvertMassToActualVolume(
                 massFlow,
                 density);
 
         // Output
-        _output.WriteLine("TEST 1: Actual volume and mass flow");
-        _output.WriteLine(
-            $"Original actual flow: {actualFlow.CubicMetersPerSecond:F6} m³/s");
+        _output.WriteLine("Actual volume <-> mass flow");
+        _output.WriteLine($"Original actual flow: {actualFlow}");
+        _output.WriteLine($"Gas density: {density.KilogramsPerCubicMeter:F6} kg/m³");
+        _output.WriteLine($"Calculated mass flow: {massFlow.KilogramsPerSecond:F6} kg/s");
+        _output.WriteLine($"Converted actual flow: {convertedFlow}");
 
-        _output.WriteLine(
-            $"Gas density: {density.KilogramsPerCubicMeter:F6} kg/m³");
-
-        _output.WriteLine(
-            $"Calculated mass flow: {massFlow.KilogramsPerSecond:F6} kg/s");
-
-        _output.WriteLine(
-            $"Converted actual flow: {convertedFlow.CubicMetersPerSecond:F6} m³/s");
-
-        // Assert
-        Assert.Equal(
-            200.0,
-            massFlow.KilogramsPerSecond,
-            10);
+        // Assert: hand calculation 10 m³/s · 20 kg/m³ = 200 kg/s
+        Assert.Equal(200.0, massFlow.KilogramsPerSecond, 10);
 
         Assert.Equal(
-            actualFlow.CubicMetersPerSecond,
-            convertedFlow.CubicMetersPerSecond,
+            actualFlow.Value.CubicMetersPerSecond,
+            convertedFlow.Value.CubicMetersPerSecond,
             10);
     }
 
     [Fact]
-    public void MassFlowToStandardVolume_ShouldCalculateCorrectly()
+    public void MassFlowToStandardVolume_ShouldMatchIdealGasReference()
     {
         // Arrange
         MassFlow massFlow =
             MassFlow.FromKilogramsPerSecond(200.0);
 
-        double molarMass = 0.020; // kg/mol
+        MolarMass molarMass =
+            MolarMass.FromKilogramsPerMole(0.020);
 
-        StandardFlowConditions conditions = new()
-        {
-            Temperature =
-                Temperature.FromKelvins(288.15),
+        StandardFlowConditions conditions = IdealIsoConditions();
 
-            Pressure =
-                Pressure.FromPascals(101325.0),
-
-            CompressibilityFactor = 1.0
-        };
+        // Independent reference (Python, double precision):
+        // Q = 200 · 1 · 8.31446261815324 · 288.15 / (101325 · 0.020)
+        const double expected = 236.448300362;
 
         // Act
-        VolumeFlow standardFlow =
+        StandardVolumeFlow standardFlow =
             FlowRateConverter.ConvertMassToStandardVolume(
                 massFlow,
                 molarMass,
                 conditions);
 
         // Output
-        _output.WriteLine("TEST 2: Mass flow to standard volume");
-        _output.WriteLine(
-            $"Mass flow: {massFlow.KilogramsPerSecond:F6} kg/s");
-
-        _output.WriteLine(
-            $"Molar mass: {molarMass:F6} kg/mol");
-
-        _output.WriteLine(
-            $"Standard temperature: {conditions.Temperature.Kelvins:F2} K");
-
-        _output.WriteLine(
-            $"Standard pressure: {conditions.Pressure.Pascals:F2} Pa");
-
-        _output.WriteLine(
-            $"Standard compressibility factor Z: {conditions.CompressibilityFactor:F4}");
-
-        _output.WriteLine(
-            $"Calculated standard volumetric flow: {standardFlow.CubicMetersPerSecond:F6} m³/s");
+        _output.WriteLine("Mass flow -> standard volume");
+        _output.WriteLine($"Mass flow: {massFlow.KilogramsPerSecond:F6} kg/s");
+        _output.WriteLine($"Molar mass: {molarMass.KilogramsPerMole:F6} kg/mol");
+        _output.WriteLine($"Standard flow: {standardFlow}");
+        _output.WriteLine($"Expected: {expected:F9} m³/s");
 
         // Assert
-        // Expected value calculated from the ideal-gas equation.
-        Assert.Equal(
-            236.4,
-            standardFlow.CubicMetersPerSecond,
-            1);
+        Assert.Equal(expected, standardFlow.Value.CubicMetersPerSecond, 8);
+        Assert.Same(conditions, standardFlow.Conditions);
+    }
+
+    [Fact]
+    public void StandardVolumeAndMassFlowConversions_ShouldBeConsistent()
+    {
+        MassFlow original =
+            MassFlow.FromKilogramsPerSecond(123.456);
+
+        MolarMass molarMass =
+            MolarMass.FromKilogramsPerMole(0.0177651);
+
+        StandardFlowConditions conditions = new()
+        {
+            Temperature = Temperature.FromKelvins(288.15),
+            Pressure = Pressure.FromPascals(101325.0),
+            CompressibilityFactor = 0.9976
+        };
+
+        StandardVolumeFlow standardFlow =
+            FlowRateConverter.ConvertMassToStandardVolume(
+                original, molarMass, conditions);
+
+        MassFlow roundTrip =
+            FlowRateConverter.ConvertStandardVolumeToMass(
+                standardFlow, molarMass);
+
+        _output.WriteLine($"Original mass flow: {original.KilogramsPerSecond:R} kg/s");
+        _output.WriteLine($"Standard flow: {standardFlow}");
+        _output.WriteLine($"Round-trip mass flow: {roundTrip.KilogramsPerSecond:R} kg/s");
+
+        Assert.Equal(original.KilogramsPerSecond, roundTrip.KilogramsPerSecond, 9);
+    }
+
+    [Fact]
+    public void ConvertMassToActualVolume_ShouldRejectZeroDensity()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FlowRateConverter.ConvertMassToActualVolume(
+                MassFlow.FromKilogramsPerSecond(10.0),
+                Density.Zero));
+    }
+
+    [Fact]
+    public void ConvertMassToStandardVolume_ShouldRejectZeroMolarMass()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            FlowRateConverter.ConvertMassToStandardVolume(
+                MassFlow.FromKilogramsPerSecond(10.0),
+                MolarMass.Zero,
+                IdealIsoConditions()));
+    }
+
+    [Fact]
+    public void ConvertMassToStandardVolume_ShouldRejectUndefinedConditions()
+    {
+        // Conditions created but never filled in: T = 0 K, P = 0 Pa, Z = 0.
+        var undefined = new StandardFlowConditions();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            FlowRateConverter.ConvertMassToStandardVolume(
+                MassFlow.FromKilogramsPerSecond(10.0),
+                MolarMass.FromKilogramsPerMole(0.020),
+                undefined));
     }
 }

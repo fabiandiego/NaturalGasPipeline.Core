@@ -8,7 +8,7 @@ public class GasComponent
 
     public double MoleFraction { get; set; }
 
-    public double MolarMass { get; set; }
+    public MolarMass MolarMass { get; set; }
 
     public Temperature CriticalTemperature { get; set; }
 

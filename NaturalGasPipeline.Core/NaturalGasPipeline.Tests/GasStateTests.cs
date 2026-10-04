@@ -40,7 +40,7 @@ public class GasStateTests
         state.CalculateState(model);
 
         _output.WriteLine(
-            $"Molar Mass = {state.MolarMass} kg/mol");
+            $"Molar Mass = {state.MolarMass.KilogramsPerMole} kg/mol");
 
         _output.WriteLine(
             $"Z = {state.CompressibilityFactor}");
@@ -84,7 +84,7 @@ public class GasStateTests
         state.CalculateState(model);
 
         _output.WriteLine(
-            $"Molar Mass = {state.MolarMass} kg/mol");
+            $"Molar Mass = {state.MolarMass.KilogramsPerMole} kg/mol");
 
         _output.WriteLine(
             $"Z = {state.CompressibilityFactor}");
@@ -151,7 +151,7 @@ public class GasStateTests
                     {
                         Name = "Methane",
                         MoleFraction = 0.90,
-                        MolarMass = 0.016043,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                         CriticalTemperature =
                             Temperature.FromKelvins(190.56),
                         CriticalPressure =
@@ -163,7 +163,7 @@ public class GasStateTests
                     {
                         Name = "Ethane",
                         MoleFraction = 0.10,
-                        MolarMass = 0.030070,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.030070),
                         CriticalTemperature =
                             Temperature.FromKelvins(305.32),
                         CriticalPressure =
@@ -187,11 +187,11 @@ public class GasStateTests
         state.CalculateMolarMass();
 
         _output.WriteLine(
-            $"Molar Mass = {state.MolarMass} kg/mol");
+            $"Molar Mass = {state.MolarMass.KilogramsPerMole} kg/mol");
 
         Assert.Equal(
             0.0174457,
-            state.MolarMass,
+            state.MolarMass.KilogramsPerMole,
             7);
     }
 
@@ -207,7 +207,7 @@ public class GasStateTests
                     {
                         Name = "Methane",
                         MoleFraction = 0.90,
-                        MolarMass = 0.016043,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                         CriticalTemperature =
                             Temperature.FromKelvins(190.56),
                         CriticalPressure =
@@ -219,7 +219,7 @@ public class GasStateTests
                     {
                         Name = "Ethane",
                         MoleFraction = 0.10,
-                        MolarMass = 0.030070,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.030070),
                         CriticalTemperature =
                             Temperature.FromKelvins(305.32),
                         CriticalPressure =
@@ -246,7 +246,7 @@ public class GasStateTests
         state.CalculateState(model);
 
         _output.WriteLine(
-            $"Molar Mass = {state.MolarMass} kg/mol");
+            $"Molar Mass = {state.MolarMass.KilogramsPerMole} kg/mol");
 
         _output.WriteLine(
             $"Z = {state.CompressibilityFactor}");
@@ -271,7 +271,7 @@ public class GasStateTests
                     {
                         Name = "Methane",
                         MoleFraction = 0.90,
-                        MolarMass = 0.016043,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                         CriticalTemperature =
                             Temperature.FromKelvins(190.56),
                         CriticalPressure =
@@ -283,7 +283,7 @@ public class GasStateTests
                     {
                         Name = "Ethane",
                         MoleFraction = 0.10,
-                        MolarMass = 0.030070,
+                        MolarMass = MolarMass.FromKilogramsPerMole(0.030070),
                         CriticalTemperature =
                             Temperature.FromKelvins(305.32),
                         CriticalPressure =
@@ -339,7 +339,7 @@ public class GasStateTests
         state.CalculateState(model);
 
         _output.WriteLine(
-            $"Molar Mass = {state.MolarMass} kg/mol");
+            $"Molar Mass = {state.MolarMass.KilogramsPerMole} kg/mol");
 
         _output.WriteLine(
             $"Critical Temperature = " +
@@ -365,7 +365,7 @@ public class GasStateTests
             $"{state.Density.KilogramsPerCubicMeter} kg/m³");
 
         Assert.True(
-            state.MolarMass > 0);
+            state.MolarMass.KilogramsPerMole > 0);
 
         Assert.True(
             state.CriticalTemperature.Kelvins > 0);
@@ -542,5 +542,92 @@ public class GasStateTests
 
         Assert.True(
             stateSRK.CompressibilityFactor > 0);
+    }
+
+    [Fact]
+    public void CalculateDensity_WithoutCompressibility_ShouldThrow()
+    {
+        // Previously this silently produced an infinite density (Z = 0).
+        var state = new GasState
+        {
+            Pressure = Pressure.FromPascals(7_000_000),
+            Temperature = Temperature.FromKelvins(288.15),
+            Mixture = NaturalGasMixtures.TypicalNaturalGas
+        };
+
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => state.CalculateDensity());
+
+        _output.WriteLine(exception.Message);
+    }
+
+    [Fact]
+    public void CalculateDensity_WithoutMixture_ShouldThrow()
+    {
+        // Previously this silently produced a density of 0 (M = 0).
+        var state = new GasState
+        {
+            Pressure = Pressure.FromPascals(7_000_000),
+            Temperature = Temperature.FromKelvins(288.15)
+        };
+
+        state.CalculateCompressibility(new IdealGasModel());
+
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => state.CalculateDensity());
+
+        _output.WriteLine(exception.Message);
+    }
+
+    [Theory]
+    [InlineData(0.0, 288.15)]
+    [InlineData(-1.0, 288.15)]
+    [InlineData(7_000_000.0, 0.0)]
+    public void CalculateState_WithNonPhysicalPressureOrTemperature_ShouldThrow(
+        double pressurePascals,
+        double temperatureKelvins)
+    {
+        var state = new GasState
+        {
+            Pressure = Pressure.FromPascals(pressurePascals),
+            Temperature = Temperature.FromKelvins(temperatureKelvins),
+            Mixture = NaturalGasMixtures.TypicalNaturalGas
+        };
+
+        var exception =
+            Assert.Throws<InvalidOperationException>(
+                () => state.CalculateState(
+                    CompressibilityModelType.PengRobinson));
+
+        _output.WriteLine(exception.Message);
+    }
+
+    [Fact]
+    public void IdealGasDensity_ShouldMatchHandCalculation()
+    {
+        // ρ = P·M / (R·T) = 1e6 · 0.016043 / (8.31446261815324 · 288.15)
+        const double expected = 6.696267194;
+
+        var state = new GasState
+        {
+            Pressure = Pressure.FromPascals(1_000_000),
+            Temperature = Temperature.FromKelvins(288.15),
+            Mixture = new GasMixture
+            {
+                Components = { StandardGasComponents.Methane }
+            }
+        };
+
+        state.CalculateState(new IdealGasModel());
+
+        _output.WriteLine(
+            $"Density = {state.Density.KilogramsPerCubicMeter:F7} kg/m³");
+
+        Assert.Equal(
+            expected,
+            state.Density.KilogramsPerCubicMeter,
+            6);
     }
 }

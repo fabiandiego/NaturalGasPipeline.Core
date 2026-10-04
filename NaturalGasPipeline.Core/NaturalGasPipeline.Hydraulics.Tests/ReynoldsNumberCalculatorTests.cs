@@ -61,6 +61,30 @@ public class ReynoldsNumberCalculatorTests
     }
 
     [Fact]
+    public void Calculate_ReverseFlow_ShouldGiveSameReynoldsNumber()
+    {
+        DynamicViscosity viscosity =
+            DynamicViscosity.FromPascalSeconds(1.1e-5);
+
+        double forward =
+            ReynoldsNumberCalculator.Calculate(
+                MassFlow.FromKilogramsPerSecond(10.0),
+                Length.FromMeters(0.5),
+                viscosity);
+
+        double reverse =
+            ReynoldsNumberCalculator.Calculate(
+                MassFlow.FromKilogramsPerSecond(-10.0),
+                Length.FromMeters(0.5),
+                viscosity);
+
+        _output.WriteLine($"Forward Re: {forward:R}");
+        _output.WriteLine($"Reverse Re: {reverse:R}");
+
+        Assert.Equal(forward, reverse);
+    }
+
+    [Fact]
     public void Calculate_ShouldRejectZeroMassFlow()
     {
         // Arrange

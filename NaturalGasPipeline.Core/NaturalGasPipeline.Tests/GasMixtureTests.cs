@@ -62,20 +62,24 @@ public class GasMixtureTests
             {
                 Name = "Methane",
                 MoleFraction = 0.90,
-                MolarMass = 0.016043
+                MolarMass = MolarMass.FromKilogramsPerMole(0.016043)
             },
             new GasComponent
             {
                 Name = "Ethane",
                 MoleFraction = 0.10,
-                MolarMass = 0.030070
+                MolarMass = MolarMass.FromKilogramsPerMole(0.030070)
             }
         }
         };
 
-        double molarMass = mixture.CalculateMolarMass();
+        MolarMass molarMass = mixture.CalculateMolarMass();
 
-        Assert.Equal(0.0174457, molarMass, 7);
+        _output.WriteLine(
+            $"Molar mass = {molarMass.KilogramsPerMole} kg/mol");
+
+        // 0.90 · 0.016043 + 0.10 · 0.030070
+        Assert.Equal(0.0174457, molarMass.KilogramsPerMole, 7);
     }
     [Fact]
     public void GasMixture_ShouldValidateComposition()
@@ -236,13 +240,13 @@ public class GasMixtureTests
             {
                 Name = "Methane",
                 MoleFraction = 1.0,
-                MolarMass = 0.0
+                MolarMass = MolarMass.FromKilogramsPerMole(0.0)
             }
         }
         };
 
         _output.WriteLine(
-            $"Molar mass = {mixture.Components[0].MolarMass} kg/mol");
+            $"Molar mass = {mixture.Components[0].MolarMass.KilogramsPerMole} kg/mol");
 
         Assert.Throws<InvalidOperationException>(
             () => mixture.ValidateComposition());
@@ -258,7 +262,7 @@ public class GasMixtureTests
             {
                 Name = "Methane",
                 MoleFraction = 1.0,
-                MolarMass = 0.016043,
+                MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                 CriticalTemperature =
                     Temperature.FromKelvins(0.0)
             }
@@ -283,7 +287,7 @@ public class GasMixtureTests
             {
                 Name = "Methane",
                 MoleFraction = 1.0,
-                MolarMass = 0.016043,
+                MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                 CriticalTemperature =
                     Temperature.FromKelvins(190.56),
                 CriticalPressure =
@@ -311,7 +315,7 @@ public class GasMixtureTests
             {
                 Name = "Methane",
                 MoleFraction = 1.0,
-                MolarMass = 0.016043,
+                MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
                 CriticalTemperature =
                     Temperature.FromKelvins(190.56),
                 CriticalPressure =

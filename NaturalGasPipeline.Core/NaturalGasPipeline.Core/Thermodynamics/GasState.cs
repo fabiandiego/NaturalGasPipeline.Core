@@ -1,16 +1,34 @@
-﻿using UnitsNet;
+using UnitsNet;
 
 namespace NaturalGasPipeline.Core.Thermodynamics;
 
+/// <summary>
+/// Thermodynamic state of a gas mixture at a given pressure and temperature.
+///
+/// Inputs (pressure, temperature, mixture) are init-only: once the state is
+/// built they cannot change, so calculated results can never refer to stale
+/// inputs. Every calculation checks its preconditions and throws instead of
+/// returning a silently wrong value (Z = 0, M = 0, ρ = ∞, ...).
+/// </summary>
 public class GasState
 {
-    public Pressure Pressure { get; set; }
+    private const double R = 8.31446261815324; // J/(mol·K)
 
-    public Temperature Temperature { get; set; }
+    public Pressure Pressure { get; init; }
 
+    public Temperature Temperature { get; init; }
+
+    public GasMixture? Mixture { get; init; }
+
+    /// <summary>
+    /// Compressibility factor. 0 means "not calculated yet".
+    /// </summary>
     public double CompressibilityFactor { get; private set; }
 
-    public double MolarMass { get; private set; }
+    /// <summary>
+    /// Mixture molar mass. Zero means "not calculated yet".
+    /// </summary>
+    public MolarMass MolarMass { get; private set; }
 
     public Temperature CriticalTemperature { get; private set; }
 
@@ -22,46 +40,63 @@ public class GasState
 
     public Density Density { get; private set; }
 
-    public GasMixture? Mixture { get; set; }
-
     public void CalculateCompressibility(
         ICompressibilityModel model)
     {
-        CompressibilityFactor =
+        ArgumentNullException.ThrowIfNull(model);
+
+        ValidatePressureAndTemperature();
+
+        double z =
             model.Calculate(
                 Pressure,
                 Temperature);
+
+        if (!double.IsFinite(z) || z <= 0.0)
+        {
+            throw new InvalidOperationException(
+                $"Compressibility model {model.GetType().Name} returned " +
+                $"a non-physical Z = {z} at " +
+                $"P = {Pressure.Pascals} Pa, T = {Temperature.Kelvins} K.");
+        }
+
+        CompressibilityFactor = z;
     }
 
     public void CalculateMolarMass()
     {
-        if (Mixture == null)
-        {
-            throw new InvalidOperationException(
-                "Gas mixture has not been assigned.");
-        }
+        GasMixture mixture = RequireMixture();
 
-        Mixture.ValidateComposition();
+        mixture.ValidateComposition();
 
         MolarMass =
-            Mixture.CalculateMolarMass();
+            mixture.CalculateMolarMass();
     }
 
+    /// <summary>
+    /// ρ = P·M / (Z·R·T).
+    /// Requires the compressibility factor to have been calculated first.
+    /// </summary>
     public void CalculateDensity()
     {
-        if (Mixture != null)
-        {
-            CalculateMolarMass();
-        }
+        ValidatePressureAndTemperature();
 
-        const double R = 8.31446261815324;
+        CalculateMolarMass();
+
+        if (CompressibilityFactor <= 0.0)
+        {
+            throw new InvalidOperationException(
+                "Compressibility factor has not been calculated. " +
+                "Call CalculateCompressibility or CalculateState first.");
+        }
 
         double p = Pressure.Pascals;
         double t = Temperature.Kelvins;
         double z = CompressibilityFactor;
+        double m = MolarMass.KilogramsPerMole;
 
         double density =
-            p * MolarMass /
+            p * m /
             (z * R * t);
 
         Density =
@@ -70,15 +105,21 @@ public class GasState
     }
 
     public void CalculateState(
-    ICompressibilityModel model)
+        ICompressibilityModel model)
     {
+        ArgumentNullException.ThrowIfNull(model);
+
+        GasMixture mixture = RequireMixture();
+
+        ValidatePressureAndTemperature();
+
         CalculateMolarMass();
 
         CriticalTemperature =
-            Mixture.CalculateCriticalTemperature();
+            mixture.CalculateCriticalTemperature();
 
         CriticalPressure =
-            Mixture.CalculateCriticalPressure();
+            mixture.CalculateCriticalPressure();
 
         ReducedTemperature =
             Temperature.Kelvins /
@@ -92,22 +133,44 @@ public class GasState
 
         CalculateDensity();
     }
+
     public void CalculateState(
-    CompressibilityModelType modelType,
-    BinaryInteractionDatabase? interactionDatabase = null)
+        CompressibilityModelType modelType,
+        BinaryInteractionDatabase? interactionDatabase = null)
     {
-        if (Mixture == null)
-        {
-            throw new InvalidOperationException(
-                "Gas mixture has not been assigned.");
-        }
+        GasMixture mixture = RequireMixture();
 
         var model =
             CompressibilityModelFactory.Create(
                 modelType,
-                Mixture,
+                mixture,
                 interactionDatabase);
 
         CalculateState(model);
+    }
+
+    private GasMixture RequireMixture()
+    {
+        return Mixture ??
+            throw new InvalidOperationException(
+                "Gas mixture has not been assigned.");
+    }
+
+    private void ValidatePressureAndTemperature()
+    {
+        double p = Pressure.Pascals;
+        double t = Temperature.Kelvins;
+
+        if (!double.IsFinite(p) || p <= 0.0)
+        {
+            throw new InvalidOperationException(
+                $"Absolute pressure must be finite and greater than 0 Pa. Value: {p} Pa");
+        }
+
+        if (!double.IsFinite(t) || t <= 0.0)
+        {
+            throw new InvalidOperationException(
+                $"Absolute temperature must be finite and greater than 0 K. Value: {t} K");
+        }
     }
 }

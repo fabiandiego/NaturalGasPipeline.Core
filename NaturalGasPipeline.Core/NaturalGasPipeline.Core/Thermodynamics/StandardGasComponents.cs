@@ -8,7 +8,7 @@ public static class StandardGasComponents
     {
         Name = "Methane",
         MoleFraction = 1.0,
-        MolarMass = 0.016043,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.016043),
         CriticalTemperature =
             Temperature.FromKelvins(190.56),
         CriticalPressure =
@@ -20,7 +20,7 @@ public static class StandardGasComponents
     {
         Name = "Ethane",
         MoleFraction = 1.0,
-        MolarMass = 0.030070,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.030070),
         CriticalTemperature =
             Temperature.FromKelvins(305.32),
         CriticalPressure =
@@ -32,7 +32,7 @@ public static class StandardGasComponents
     {
         Name = "Propane",
         MoleFraction = 1.0,
-        MolarMass = 0.044097,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.044097),
         CriticalTemperature =
             Temperature.FromKelvins(369.83),
         CriticalPressure =
@@ -44,7 +44,7 @@ public static class StandardGasComponents
     {
         Name = "Nitrogen",
         MoleFraction = 1.0,
-        MolarMass = 0.0280134,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.0280134),
         CriticalTemperature =
             Temperature.FromKelvins(126.20),
         CriticalPressure =
@@ -56,7 +56,7 @@ public static class StandardGasComponents
     {
         Name = "CarbonDioxide",
         MoleFraction = 1.0,
-        MolarMass = 0.0440095,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.0440095),
         CriticalTemperature =
             Temperature.FromKelvins(304.13),
         CriticalPressure =

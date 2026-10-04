@@ -37,12 +37,15 @@ public class GasMixture
                     $"Value: {component.MoleFraction}");
             }
 
-            if (component.MolarMass <= 0.0)
+            double molarMass =
+                component.MolarMass.KilogramsPerMole;
+
+            if (!double.IsFinite(molarMass) || molarMass <= 0.0)
             {
                 throw new InvalidOperationException(
-                    $"Molar mass must be greater than zero. " +
+                    $"Molar mass must be finite and greater than zero. " +
                     $"Component: {component.Name}, " +
-                    $"Value: {component.MolarMass}");
+                    $"Value: {molarMass} kg/mol");
             }
 
             if (component.CriticalTemperature.Kelvins <= 0.0)
@@ -80,10 +83,14 @@ public class GasMixture
         }
     }
 
-    public double CalculateMolarMass()
+    /// <summary>
+    /// Mixture molar mass: M = Σ yᵢ·Mᵢ.
+    /// </summary>
+    public MolarMass CalculateMolarMass()
     {
-        return Components.Sum(
-            c => c.MoleFraction * c.MolarMass);
+        return MolarMass.FromKilogramsPerMole(
+            Components.Sum(
+                c => c.MoleFraction * c.MolarMass.KilogramsPerMole));
     }
 
     public Temperature CalculateCriticalTemperature()
