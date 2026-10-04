@@ -1,0 +1,81 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37710.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{90552509-5A20-4679-80A3-95905B0DE3E1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{F70D44E6-4829-44C9-AF3A-0E6B0813FD60}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Core", "src\NaturalGasPipeline.Core\NaturalGasPipeline.Core.csproj", "{C4E445E4-0646-49E7-A556-92DD9522DA3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Thermodynamics", "src\NaturalGasPipeline.Thermodynamics\NaturalGasPipeline.Thermodynamics.csproj", "{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Hydraulics", "src\NaturalGasPipeline.Hydraulics\NaturalGasPipeline.Hydraulics.csproj", "{F63D203B-5DF4-4206-88F0-76D0530273B6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Mechanics", "src\NaturalGasPipeline.Mechanics\NaturalGasPipeline.Mechanics.csproj", "{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Core.Tests", "tests\NaturalGasPipeline.Core.Tests\NaturalGasPipeline.Core.Tests.csproj", "{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Thermodynamics.Tests", "tests\NaturalGasPipeline.Thermodynamics.Tests\NaturalGasPipeline.Thermodynamics.Tests.csproj", "{09DA5B1B-E678-43A4-A845-2FD9F5899624}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Hydraulics.Tests", "tests\NaturalGasPipeline.Hydraulics.Tests\NaturalGasPipeline.Hydraulics.Tests.csproj", "{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F63D203B-5DF4-4206-88F0-76D0530273B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C4E445E4-0646-49E7-A556-92DD9522DA3F} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{B518DADB-5AB3-4628-A9CC-14D54FEF0CF6} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{F63D203B-5DF4-4206-88F0-76D0530273B6} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{A48FF9FD-4E2C-4254-B4A7-66D27923CD2B} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{1F94A7F9-E2C5-4D3E-9C86-BAF7EF0201FB} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+		{09DA5B1B-E678-43A4-A845-2FD9F5899624} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0121B387-7EE0-44A7-B8E1-CC47D5981FBF}
+	EndGlobalSection
+EndGlobal

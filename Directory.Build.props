@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    Shared settings for every project under this folder.
+    A project can still override any of them in its own .csproj
+    (e.g. a future netstandard2.1 target for Unity).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591: missing XML comment. Documentation is encouraged, not enforced. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+</Project>
