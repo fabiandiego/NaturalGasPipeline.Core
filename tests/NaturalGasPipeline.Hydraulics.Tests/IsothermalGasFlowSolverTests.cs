@@ -395,7 +395,7 @@ public class IsothermalGasFlowSolverTests
     [Fact]
     public void SolveMassFlow_WithoutDrivingPressure_ShouldThrow()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<NoForwardFlowException>(() =>
             TypicalGasSolver().SolveMassFlow(
                 Segment(0.5, 50_000, 0.0),
                 Temperature.FromKelvins(288.15),

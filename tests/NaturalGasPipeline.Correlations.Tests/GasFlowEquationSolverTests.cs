@@ -185,7 +185,7 @@ public class GasFlowEquationSolverTests
         var t = Temperature.FromDegreesRankine(530.0);
 
         // Outlet above inlet on a flat line: no forward flow.
-        Assert.Throws<InvalidOperationException>(() => weymouth.SolveFlow(segment, t, Psia(800.0), Psia(900.0)));
+        Assert.Throws<NoForwardFlowException>(() => weymouth.SolveFlow(segment, t, Psia(800.0), Psia(900.0)));
 
         // More flow than the line can carry from this inlet pressure.
         Assert.Throws<FlowCapacityExceededException>(() => weymouth.SolveOutletPressure(segment, t, Psia(800.0), Mmscfd(5000.0)));

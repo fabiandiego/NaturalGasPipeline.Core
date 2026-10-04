@@ -16,7 +16,7 @@ src/
     Common/      PhysicalConstants (R, g)
     Flow/        caudal másico, volumétrico real y estándar, conversiones
     Gas/         GasProperties (foto inmutable de un estado)
-    Numerics/    CubicEquationSolver, BrentRootSolver
+    Numerics/    CubicEquationSolver, BrentRootSolver, DenseLinearSolver
     Pipeline/    Pipe (DE, espesor), PipeSegment (DI, L, ε, Δz)
   NaturalGasPipeline.Thermodynamics  → Core
     Components/      GasComponent, StandardGasComponents (C1–nC4, N₂, CO₂, H₂S)
@@ -46,6 +46,8 @@ src/
     PipelineProfile: tramos desde un perfil (progresiva, cota) y subdivisión
     SeriesSystem: tuberías, compresores y enfriadores en serie (hacia adelante,
                   hacia atrás o resolviendo el flujo másico)
+    GasNetwork + NetworkSolver: red con nodos de presión fija o de caudal fijo,
+                  lazos e inversión de flujo (método nodal, Newton)
   NaturalGasPipeline.Mechanics       → Core (reservado)
 tests/
   NaturalGasPipeline.Core.Tests
@@ -57,7 +59,7 @@ tests/
 ```
 
 Las dependencias van en una sola dirección: `Core ← Thermodynamics ← Hydraulics ← Correlations ← Network` (y `Thermodynamics ← Compression ← Network`).
-Los próximos módulos (red con nodos y lazos, Validation) seguirán la misma regla.
+Los próximos módulos (Validation, compresores dentro de la red) seguirán la misma regla.
 
 ## Cómo añadir un modelo
 

@@ -20,6 +20,13 @@ public interface ISegmentModel
     SegmentResult SolveOutletPressure(PipeSegment segment, Temperature temperature, Pressure inletPressure, MassFlow massFlow);
 
     SegmentResult SolveInletPressure(PipeSegment segment, Temperature temperature, Pressure outletPressure, MassFlow massFlow);
+
+    /// <summary>
+    /// Mass flow from inlet to outlet for given end pressures. Throws
+    /// <see cref="NoForwardFlowException"/> when the pressures do not drive
+    /// flow in that direction.
+    /// </summary>
+    SegmentResult SolveMassFlow(PipeSegment segment, Temperature temperature, Pressure inletPressure, Pressure outletPressure);
 }
 
 /// <summary>State of one solved segment.</summary>
@@ -73,6 +80,9 @@ public sealed class IsothermalSegmentModel : ISegmentModel
     public SegmentResult SolveInletPressure(PipeSegment segment, Temperature temperature, Pressure outletPressure, MassFlow massFlow) =>
         Convert(segment, temperature, _solver.SolveInletPressure(segment, temperature, outletPressure, massFlow));
 
+    public SegmentResult SolveMassFlow(PipeSegment segment, Temperature temperature, Pressure inletPressure, Pressure outletPressure) =>
+        Convert(segment, temperature, _solver.SolveMassFlow(segment, temperature, inletPressure, outletPressure));
+
     private SegmentResult Convert(PipeSegment segment, Temperature temperature, GasFlowSolution s) => new()
     {
         Model = Name,
@@ -114,6 +124,9 @@ public sealed class FlowEquationSegmentModel : ISegmentModel
 
     public SegmentResult SolveInletPressure(PipeSegment segment, Temperature temperature, Pressure outletPressure, MassFlow massFlow) =>
         Convert(segment, _solver.SolveInletPressure(segment, temperature, outletPressure, ToStandard(massFlow)));
+
+    public SegmentResult SolveMassFlow(PipeSegment segment, Temperature temperature, Pressure inletPressure, Pressure outletPressure) =>
+        Convert(segment, _solver.SolveFlow(segment, temperature, inletPressure, outletPressure));
 
     private StandardVolumetricFlow ToStandard(MassFlow massFlow) =>
         FlowRateConverter.ConvertMassToStandardVolume(massFlow, _gas.MolarMass, _base);

@@ -74,7 +74,7 @@ public sealed class GasFlowEquationSolver
 
         if (n <= 0.0)
         {
-            throw new InvalidOperationException(
+            throw new NoForwardFlowException(
                 $"No forward flow: P1² − e^s·P2² = {n:E3} Pa² ≤ 0 (outlet pressure too high for the elevation change).");
         }
 
@@ -178,7 +178,7 @@ public sealed class GasFlowEquationSolver
 
         if (available <= 0.0)
         {
-            throw new InvalidOperationException(
+            throw new NoForwardFlowException(
                 $"No forward flow: P1² − e^s·P2² = {available:E3} Pa² ≤ 0.");
         }
 

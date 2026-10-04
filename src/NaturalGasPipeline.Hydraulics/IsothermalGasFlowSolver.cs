@@ -209,7 +209,7 @@ public sealed class IsothermalGasFlowSolver
 
         if (drivingTerm <= 0.0)
         {
-            throw new InvalidOperationException(
+            throw new NoForwardFlowException(
                 "No forward flow: P1² − e^s·P2² ≤ 0 (outlet pressure plus elevation " +
                 "head is not lower than the inlet pressure).");
         }
