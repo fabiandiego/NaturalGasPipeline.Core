@@ -43,6 +43,30 @@ public class PengRobinsonParametersTests
         AssertRelative(expectedB, parameters.B);
     }
 
+    [Fact]
+    public void PengRobinsonParameters_ShouldRejectInvalidMixture()
+    {
+        var mixture = new GasMixture
+        {
+            Components =
+        {
+            StandardGasComponents.Methane,
+            StandardGasComponents.Ethane
+        }
+        };
+
+        mixture.Components[0].MoleFraction = 0.90;
+        mixture.Components[1].MoleFraction = 0.20;
+
+        _output.WriteLine(
+            $"Total mole fraction = {mixture.TotalMoleFraction()}");
+
+        Assert.Throws<InvalidOperationException>(
+            () => new PengRobinsonParameters(
+                mixture,
+                Temperature.FromKelvins(288.15)));
+    }
+
     private static void AssertRelative(double expected, double actual)
     {
         double error = System.Math.Abs(actual - expected) / System.Math.Abs(expected);

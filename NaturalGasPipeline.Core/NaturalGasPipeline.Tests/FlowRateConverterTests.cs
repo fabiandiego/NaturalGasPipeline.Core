@@ -3,7 +3,7 @@ using Xunit;
 using Xunit.Abstractions;
 using NaturalGasPipeline.Core.Flow;
 
-namespace NaturalGasPipeline.Hydraulics.Tests;
+namespace NaturalGasPipeline.Tests.Flow;
 
 public class FlowRateConverterTests
 {

@@ -15,43 +15,6 @@ public class GasMixtureTests
         _output = output;
     }
     [Fact]
-    public void NaturalGasComposition_ShouldSumToOne()
-    {
-        var mixture = new GasMixture();
-
-        mixture.Components.Add(new GasComponent
-        {
-            Name = "Methane",
-            MoleFraction = 0.92
-        });
-
-        mixture.Components.Add(new GasComponent
-        {
-            Name = "Ethane",
-            MoleFraction = 0.04
-        });
-
-        mixture.Components.Add(new GasComponent
-        {
-            Name = "Propane",
-            MoleFraction = 0.01
-        });
-
-        mixture.Components.Add(new GasComponent
-        {
-            Name = "Carbon Dioxide",
-            MoleFraction = 0.01
-        });
-
-        mixture.Components.Add(new GasComponent
-        {
-            Name = "Nitrogen",
-            MoleFraction = 0.02
-        });
-
-        Assert.Equal(1.0, mixture.TotalMoleFraction(), 10);
-    }
-    [Fact]
     public void GasMixture_ShouldCalculateMolarMass()
     {
         var mixture = new GasMixture
@@ -82,31 +45,29 @@ public class GasMixtureTests
         Assert.Equal(0.0174457, molarMass.KilogramsPerMole, 7);
     }
     [Fact]
-    public void GasMixture_ShouldValidateComposition()
+    public void ValidComposition_ShouldPassValidation()
     {
         var mixture = new GasMixture
         {
             Components =
-        {
-            StandardGasComponents.Methane,
-            StandardGasComponents.Ethane
-        }
+            {
+                StandardGasComponents.Methane,
+                StandardGasComponents.Ethane
+            }
         };
 
         mixture.Components[0].MoleFraction = 0.90;
         mixture.Components[1].MoleFraction = 0.10;
 
-        double total =
-            mixture.TotalMoleFraction();
+        _output.WriteLine($"Total mole fraction = {mixture.TotalMoleFraction():R}");
 
-        _output.WriteLine(
-            $"Total mole fraction = {total}");
+        Assert.Equal(1.0, mixture.TotalMoleFraction(), 10);
 
-        Assert.Equal(
-            1.0,
-            total,
-            10);
+        var exception = Record.Exception(() => mixture.ValidateComposition());
+
+        Assert.Null(exception);
     }
+
     [Fact]
     public void GasMixture_ShouldRejectInvalidComposition()
     {
@@ -154,29 +115,6 @@ public class GasMixtureTests
 
         Assert.Throws<InvalidOperationException>(
             () => mixture.ValidateComposition());
-    }
-    [Fact]
-    public void PengRobinsonParameters_ShouldRejectInvalidMixture()
-    {
-        var mixture = new GasMixture
-        {
-            Components =
-        {
-            StandardGasComponents.Methane,
-            StandardGasComponents.Ethane
-        }
-        };
-
-        mixture.Components[0].MoleFraction = 0.90;
-        mixture.Components[1].MoleFraction = 0.20;
-
-        _output.WriteLine(
-            $"Total mole fraction = {mixture.TotalMoleFraction()}");
-
-        Assert.Throws<InvalidOperationException>(
-            () => new PengRobinsonParameters(
-                mixture,
-                Temperature.FromKelvins(288.15)));
     }
     [Fact]
     public void GasMixture_ShouldRejectEmptyMixture()
