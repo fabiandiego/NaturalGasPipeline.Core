@@ -93,11 +93,17 @@ public class GasStateTests
             $"Density = " +
             $"{state.Density.KilogramsPerCubicMeter} kg/m³");
 
-        Assert.True(
-            state.CompressibilityFactor > 0);
+        // Independent Python implementation of PR (numpy.roots);
+        // ρ = P·M / (Z·R·T) with M = 0.016043 kg/mol.
+        Assert.Equal(
+            0.8492349032782932,
+            state.CompressibilityFactor,
+            9);
 
-        Assert.True(
-            state.Density.KilogramsPerCubicMeter > 0);
+        Assert.Equal(
+            55.195411984408054,
+            state.Density.KilogramsPerCubicMeter,
+            6);
     }
 
     [Fact]
@@ -480,17 +486,9 @@ public class GasStateTests
         _output.WriteLine(
             $"ΔDensity = {densityDifferencePercent}%");
 
-        Assert.True(
-            prState.CompressibilityFactor > 0);
-
-        Assert.True(
-            srkState.CompressibilityFactor > 0);
-
-        Assert.True(
-            prState.Density.KilogramsPerCubicMeter > 0);
-
-        Assert.True(
-            srkState.Density.KilogramsPerCubicMeter > 0);
+        // Independent Python implementation (numpy.roots), kij = 0.
+        Assert.Equal(0.8162522850766638, prState.CompressibilityFactor, 9);
+        Assert.Equal(0.8473996626963167, srkState.CompressibilityFactor, 9);
     }
     [Fact]
     public void GasState_ShouldCalculateUsingSelectedModel()
