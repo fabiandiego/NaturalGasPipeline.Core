@@ -31,17 +31,23 @@ src/
     Viscosity/       IViscosityModel: Lee-Gonzalez-Eakin, constante
   NaturalGasPipeline.Hydraulics      → Core, Thermodynamics
     Friction/    IFrictionFactorModel: Colebrook-White, Haaland, Swamee-Jain, Churchill,
-                 AGA totalmente turbulento, f constante, F (factor de transmisión) constante
+                 AGA totalmente turbulento, AGA con factor de arrastre Df,
+                 f constante, F (factor de transmisión) constante
     Reynolds, Darcy-Weisbach, IsothermalGasFlowSolver
+  NaturalGasPipeline.Correlations    → Core, Thermodynamics, Hydraulics
+    IGasFlowEquation: General Flow / AGA (cualquier modelo de fricción),
+                      Weymouth, Panhandle A, Panhandle B (eficiencia E explícita)
+    GasFlowEquationSolver: resuelve Q, P2, P1 o diámetro interno
   NaturalGasPipeline.Mechanics       → Core (reservado)
 tests/
   NaturalGasPipeline.Core.Tests
   NaturalGasPipeline.Thermodynamics.Tests
   NaturalGasPipeline.Hydraulics.Tests
+  NaturalGasPipeline.Correlations.Tests
 ```
 
-Las dependencias van en una sola dirección: `Core ← Thermodynamics ← Hydraulics`.
-Los próximos módulos (Correlations, Solver, Network, Validation) seguirán la misma regla.
+Las dependencias van en una sola dirección: `Core ← Thermodynamics ← Hydraulics ← Correlations`.
+Los próximos módulos (Solver, Network, Validation) seguirán la misma regla.
 
 ## Cómo añadir un modelo
 
