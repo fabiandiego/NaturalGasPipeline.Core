@@ -16,10 +16,19 @@ namespace NaturalGasPipeline.Compression.Tests;
 /// The course formula HP = 0.0857·(γ/(γ−1))·Q·T1·(Z1+Z2)/2·(r^((γ−1)/γ) − 1)/ηa
 /// uses a rounded constant: for Tb = 520 °R, Pb = 14.7 psia the exact value is
 /// 0.085664 (−0.04 %), so this library gives 2690.5 HP (−0.06 %).
+///
+/// Horsepower is converted here with its exact definition, 1 hp = 550 ft·lbf/s
+/// = 550 · 0.3048 · 0.45359237 · 9.80665 W = 745.69987158 W. UnitsNet 5.75.1
+/// returns 2690.536 hp for the same power (+0.0013 %), i.e. it uses a rounded
+/// factor (≈ 745.69 W/hp); results are asserted in watts to stay independent
+/// of that.
 /// </summary>
 public class CompressorStageTests
 {
     private const double R = PhysicalConstants.MolarGasConstant;
+
+    // 1 mechanical hp = 550 ft·lbf/s, exact from the definitions of ft, lb and g_n.
+    private const double WattsPerHorsepower = 550.0 * 0.3048 * 0.45359237 * 9.80665;
 
     private readonly ITestOutputHelper _output;
 
@@ -57,11 +66,18 @@ public class CompressorStageTests
 
         _output.WriteLine($"ṁ = {massFlow.KilogramsPerSecond:F4} kg/s, r = {r.PressureRatio:F3}, Z1 = {r.SuctionCompressibilityFactor}, Z2 = {r.DischargeCompressibilityFactor}");
         _output.WriteLine($"T2 = {r.DischargeTemperature.DegreesFahrenheit:F2} °F, head = {r.Head.KilojoulesPerKilogram:F3} kJ/kg");
-        _output.WriteLine($"HP = {r.GasPower.MechanicalHorsepower:F2} (published 2692), BHP = {r.ShaftPower.MechanicalHorsepower:F2} (published 2747)");
+        double gasWatts = (double)r.GasPower.Watts;
+        double shaftWatts = (double)r.ShaftPower.Watts;
+        double hp = gasWatts / WattsPerHorsepower;
+        double bhp = shaftWatts / WattsPerHorsepower;
 
-        Assert.Equal(2690.500230195556, (double)r.GasPower.MechanicalHorsepower, 1e-6);
-        Assert.InRange((double)r.GasPower.MechanicalHorsepower / 2692.0 - 1.0, -0.001, 0.001);
-        Assert.InRange((double)r.ShaftPower.MechanicalHorsepower / 2747.0 - 1.0, -0.001, 0.001);
+        _output.WriteLine($"P_gas = {gasWatts:F2} W = {hp:F3} hp (published 2692), P_shaft = {bhp:F3} hp (published 2747)");
+        _output.WriteLine($"UnitsNet MechanicalHorsepower for comparison: {r.GasPower.MechanicalHorsepower:F3}");
+
+        Assert.Equal(2006305.6761488947, gasWatts, 1e-4);
+        Assert.Equal(2690.500230195556, hp, 1e-6);
+        Assert.InRange(hp / 2692.0 - 1.0, -0.001, 0.001);
+        Assert.InRange(bhp / 2747.0 - 1.0, -0.001, 0.001);
     }
 
     /// <summary>
