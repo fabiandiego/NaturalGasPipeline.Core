@@ -161,11 +161,11 @@ public sealed class NetworkSolver
     {
         var balance = new double[network.Nodes.Count];
 
-        foreach ((NetworkPipe pipe, int from, int to) in edges)
+        foreach ((NetworkPipe pipe, int fromIndex, int toIndex) in edges)
         {
-            double q = Flow(pipe, pressure[from], pressure[to], out _);
-            balance[from] -= q;
-            balance[to] += q;
+            double q = Flow(pipe, pressure[fromIndex], pressure[toIndex], out _);
+            balance[fromIndex] -= q;
+            balance[toIndex] += q;
         }
 
         // inflow − outflow − withdrawal
@@ -182,18 +182,18 @@ public sealed class NetworkSolver
     {
         var j = new double[size, size];
 
-        foreach ((NetworkPipe pipe, int from, int to) in edges)
+        foreach ((NetworkPipe pipe, int fromIndex, int toIndex) in edges)
         {
-            double pf = pressure[from];
-            double pt = pressure[to];
+            double pf = pressure[fromIndex];
+            double pt = pressure[toIndex];
             double hf = 1e-6 * pf;
             double ht = 1e-6 * pt;
 
             double dqdpf = (Flow(pipe, pf + hf, pt, out _) - Flow(pipe, pf - hf, pt, out _)) / (2.0 * hf);
             double dqdpt = (Flow(pipe, pf, pt + ht, out _) - Flow(pipe, pf, pt - ht, out _)) / (2.0 * ht);
 
-            int rf = position[from];
-            int rt = position[to];
+            int rf = position[fromIndex];
+            int rt = position[toIndex];
 
             // Residual at "from" contains −q, at "to" contains +q.
             if (rf >= 0)
@@ -266,11 +266,11 @@ public sealed class NetworkSolver
         var pipes = new List<NetworkPipeResult>(edges.Length);
         var warnings = new List<string>();
 
-        foreach ((NetworkPipe pipe, int from, int to) in edges)
+        foreach ((NetworkPipe pipe, int fromIndex, int toIndex) in edges)
         {
-            double q = Flow(pipe, pressure[from], pressure[to], out SegmentResult? segment);
-            balance[from] -= q;
-            balance[to] += q;
+            double q = Flow(pipe, pressure[fromIndex], pressure[toIndex], out SegmentResult? segment);
+            balance[fromIndex] -= q;
+            balance[toIndex] += q;
 
             pipes.Add(new NetworkPipeResult(pipe.Id, pipe.From, pipe.To, MassFlow.FromKilogramsPerSecond(q), segment));
 
