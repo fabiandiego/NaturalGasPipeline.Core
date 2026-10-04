@@ -49,6 +49,35 @@ public static class NistReferenceData
             new object[] { "Nitrogen", 288.15, 10.0, 117.2486 },
         };
 
+    /// <summary>
+    /// Fluid, temperature (K), pressure (MPa), density (kg/m³), viscosity (µPa·s).
+    /// Same state points as <see cref="PureFluidDensities"/>, as reported by
+    /// the NIST WebBook (transport-property correlations cited on its pages).
+    /// </summary>
+    public static IEnumerable<object[]> PureFluidViscosities =>
+        new List<object[]>
+        {
+            new object[] { "Methane", 273.15, 1.0, 7.234333, 10.38720 },
+            new object[] { "Methane", 273.15, 4.0, 31.17682, 11.03141 },
+            new object[] { "Methane", 273.15, 7.0, 58.86624, 12.07535 },
+            new object[] { "Methane", 273.15, 10.0, 90.04018, 13.62254 },
+
+            new object[] { "Methane", 288.15, 1.0, 6.829216, 10.87902 },
+            new object[] { "Methane", 288.15, 4.0, 29.00000, 11.47477 },
+            new object[] { "Methane", 288.15, 7.0, 53.79515, 12.37903 },
+            new object[] { "Methane", 288.15, 10.0, 80.85565, 13.64415 },
+
+            new object[] { "Methane", 313.15, 1.0, 6.250718, 11.67829 },
+            new object[] { "Methane", 313.15, 4.0, 26.07637, 12.21021 },
+            new object[] { "Methane", 313.15, 7.0, 47.43201, 12.95603 },
+            new object[] { "Methane", 313.15, 10.0, 69.97382, 13.93291 },
+
+            new object[] { "Nitrogen", 288.15, 1.0, 11.72367, 17.46956 },
+            new object[] { "Nitrogen", 288.15, 4.0, 47.12667, 18.01180 },
+            new object[] { "Nitrogen", 288.15, 7.0, 82.47998, 18.71439 },
+            new object[] { "Nitrogen", 288.15, 10.0, 117.2486, 19.56019 },
+        };
+
     public static double MolarMassOf(string fluid) => fluid switch
     {
         "Methane" => MethaneMolarMass,

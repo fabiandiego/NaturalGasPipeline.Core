@@ -1,4 +1,4 @@
-using UnitsNet;
+﻿using UnitsNet;
 
 namespace NaturalGasPipeline.Core.Thermodynamics;
 
@@ -39,6 +39,11 @@ public class GasState
     public double ReducedPressure { get; private set; }
 
     public Density Density { get; private set; }
+
+    /// <summary>
+    /// Dynamic viscosity. Zero means "not calculated yet".
+    /// </summary>
+    public DynamicViscosity Viscosity { get; private set; }
 
     public void CalculateCompressibility(
         ICompressibilityModel model)
@@ -102,6 +107,37 @@ public class GasState
         Density =
             UnitsNet.Density.FromKilogramsPerCubicMeter(
                 density);
+    }
+
+    /// <summary>
+    /// Viscosity at the current state. Requires the density to have been
+    /// calculated first (CalculateDensity or CalculateState).
+    /// </summary>
+    public void CalculateViscosity(
+        IViscosityModel model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+
+        if (Density.KilogramsPerCubicMeter <= 0.0)
+        {
+            throw new InvalidOperationException(
+                "Density has not been calculated. " +
+                "Call CalculateDensity or CalculateState first.");
+        }
+
+        DynamicViscosity viscosity =
+            model.Calculate(Temperature, Density, MolarMass);
+
+        double mu = viscosity.PascalSeconds;
+
+        if (!double.IsFinite(mu) || mu <= 0.0)
+        {
+            throw new InvalidOperationException(
+                $"Viscosity model {model.GetType().Name} returned " +
+                $"a non-physical viscosity {mu} Pa·s.");
+        }
+
+        Viscosity = viscosity;
     }
 
     public void CalculateState(
