@@ -195,11 +195,11 @@ public class SeriesSystemTests
 
         Assert.Equal(1.6, forward.Nodes[2].Pressure.Pascals / forward.Nodes[1].Pressure.Pascals, 12);
         Assert.Equal(forward.Nodes[2].Pressure.Pascals - 50_000.0, forward.Nodes[3].Pressure.Pascals, 1e-6);
-        Assert.Equal(direct.ShaftPower.Watts, cs.ShaftPower.Watts, 1e-6);
-        Assert.Equal(cs.ShaftPower.Watts, forward.CompressorShaftPower.Watts, 1e-6);
+        Assert.Equal((double)direct.ShaftPower.Watts, (double)cs.ShaftPower.Watts, 1e-6);
+        Assert.Equal((double)cs.ShaftPower.Watts, (double)forward.CompressorShaftPower.Watts, 1e-6);
         Assert.Equal(1.0, backward.InletPressure.Pascals / p1.Pascals, 1e-8);
         Assert.Equal(1.0, flow.MassFlow.KilogramsPerSecond / m.KilogramsPerSecond, 1e-7);
-        Assert.Empty(forward.Warnings.Where(w => w.Contains("isothermal")));
+        Assert.DoesNotContain(forward.Warnings, w => w.Contains("isothermal"));
     }
 
     [Fact]

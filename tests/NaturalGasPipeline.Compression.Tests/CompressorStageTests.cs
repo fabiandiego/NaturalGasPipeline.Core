@@ -59,9 +59,9 @@ public class CompressorStageTests
         _output.WriteLine($"T2 = {r.DischargeTemperature.DegreesFahrenheit:F2} °F, head = {r.Head.KilojoulesPerKilogram:F3} kJ/kg");
         _output.WriteLine($"HP = {r.GasPower.MechanicalHorsepower:F2} (published 2692), BHP = {r.ShaftPower.MechanicalHorsepower:F2} (published 2747)");
 
-        Assert.Equal(2690.500230195556, r.GasPower.MechanicalHorsepower, 1e-6);
-        Assert.InRange(r.GasPower.MechanicalHorsepower / 2692.0 - 1.0, -0.001, 0.001);
-        Assert.InRange(r.ShaftPower.MechanicalHorsepower / 2747.0 - 1.0, -0.001, 0.001);
+        Assert.Equal(2690.500230195556, (double)r.GasPower.MechanicalHorsepower, 1e-6);
+        Assert.InRange((double)r.GasPower.MechanicalHorsepower / 2692.0 - 1.0, -0.001, 0.001);
+        Assert.InRange((double)r.ShaftPower.MechanicalHorsepower / 2747.0 - 1.0, -0.001, 0.001);
     }
 
     /// <summary>
@@ -92,8 +92,8 @@ public class CompressorStageTests
         _output.WriteLine($"ηp = {etaP}: P = {polytropic.GasPower.Watts:F2} W, T2 = {polytropic.DischargeTemperature.Kelvins:F4} K");
 
         Assert.Equal(0.7836933016923301, etaS, 1e-12);
-        Assert.Equal(1376716.7588517107, isentropic.GasPower.Watts, 1e-4);
-        Assert.Equal(isentropic.GasPower.Watts, polytropic.GasPower.Watts, 1e-6);
+        Assert.Equal(1376716.7588517107, (double)isentropic.GasPower.Watts, 1e-4);
+        Assert.Equal((double)isentropic.GasPower.Watts, (double)polytropic.GasPower.Watts, 1e-6);
         Assert.Equal(366.40115194172927, polytropic.DischargeTemperature.Kelvins, 1e-9);
     }
 
@@ -115,8 +115,8 @@ public class CompressorStageTests
 
         _output.WriteLine($"{basis}: P_gas = {r.GasPower.Megawatts:F6} MW, ṁ·cp·ΔT = {enthalpyRise / 1e6:F6} MW, P_shaft = {r.ShaftPower.Megawatts:F6} MW");
 
-        Assert.Equal(enthalpyRise, r.GasPower.Watts, enthalpyRise * 1e-12);
-        Assert.Equal(r.GasPower.Watts / 0.97, r.ShaftPower.Watts, 1e-6);
+        Assert.Equal(enthalpyRise, (double)r.GasPower.Watts, enthalpyRise * 1e-12);
+        Assert.Equal((double)r.GasPower.Watts / 0.97, (double)r.ShaftPower.Watts, 1e-6);
     }
 
     /// <summary>
@@ -143,9 +143,9 @@ public class CompressorStageTests
 
         Assert.Equal(System.Math.Pow(4.5, 1.0 / 3.0), threeHot.Stages[0].PressureRatio, 12);
         Assert.Equal(9.0e6, threeHot.Stages[^1].DischargePressure.Pascals, 1e-6);
-        Assert.Equal(single.GasPower.Watts, threeHot.GasPower.Watts, single.GasPower.Watts * 1e-12);
+        Assert.Equal((double)single.GasPower.Watts, (double)threeHot.GasPower.Watts, (double)single.GasPower.Watts * 1e-12);
         Assert.Equal(single.DischargeTemperature.Kelvins, threeHot.DischargeTemperature.Kelvins, 1e-9);
-        Assert.True(threeCooled.GasPower.Watts < 0.9 * single.GasPower.Watts);
+        Assert.True((double)threeCooled.GasPower.Watts < 0.9 * (double)single.GasPower.Watts);
     }
 
     [Fact]

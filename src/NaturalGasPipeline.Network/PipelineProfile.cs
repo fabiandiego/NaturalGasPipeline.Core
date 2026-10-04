@@ -15,6 +15,8 @@ public readonly record struct ProfilePoint(Length Chainage, Length Elevation);
 public static class PipelineProfile
 {
     /// <param name="points">At least two points, chainage strictly increasing (measured along the pipe).</param>
+    /// <param name="internalDiameter">Internal diameter of every segment.</param>
+    /// <param name="absoluteRoughness">Absolute wall roughness of every segment.</param>
     public static IReadOnlyList<PipeSegment> ToSegments(
         IReadOnlyList<ProfilePoint> points,
         Length internalDiameter,
