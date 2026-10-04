@@ -335,14 +335,15 @@ public class IsothermalGasFlowSolverTests
     /// <summary>
     /// Corresponding-states Z models plug into the solver unchanged; a
     /// correlation used outside its fitted range is reported, not hidden.
-    /// Typical gas (Kay): Tpc = 200.6 K, so 260 K gives Tpr = 1.30, below
-    /// Papay's validated 1.4. DAK (1.0 ≤ Tpr) stays silent at the same state.
+    /// Typical gas (Kay): Tpc = 200.6 K, Ppc = 4.60 MPa. At 250 K (Tpr 1.25)
+    /// Papay is validated only up to Ppr 1.24, and P1 = 7 MPa is Ppr 1.52.
+    /// DAK (1 ≤ Tpr ≤ 3, 0.2 ≤ Ppr ≤ 30) stays silent at the same state.
     /// </summary>
     [Fact]
     public void CompressibilityCorrelationOutsideItsRange_ShouldProduceWarning()
     {
         var segment = Segment(0.5, 50_000, 0.0);
-        var cold = Temperature.FromKelvins(260.0);
+        var cold = Temperature.FromKelvins(250.0);
         var p1 = Pressure.FromMegapascals(7.0);
         var m = MassFlow.FromKilogramsPerSecond(100.0);
 

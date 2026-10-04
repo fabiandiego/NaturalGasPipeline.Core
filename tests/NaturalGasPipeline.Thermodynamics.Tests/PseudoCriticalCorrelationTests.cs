@@ -167,11 +167,41 @@ public class PseudoCriticalCorrelationTests
         Assert.False(WichertAzizCorrection.IsWithinValidatedRange(0.60, 0.0));
     }
 
+    // ------------------------------------------------------------ Carr-Kobayashi-Burrows
+
+    [Fact]
+    public void CarrKobayashiBurrows_ShouldApplyPublishedCoefficients()
+    {
+        PseudoCriticalProperties sweet = new SuttonPseudoCriticalCorrelation().Calculate(0.70);
+        PseudoCriticalProperties corrected = CarrKobayashiBurrowsCorrection.Apply(sweet, 0.02, 0.03, 0.05);
+
+        double expectedRankine = sweet.Temperature.DegreesRankine - 80.0 * 0.02 + 130.0 * 0.03 - 250.0 * 0.05;
+        double expectedPsia = sweet.Pressure.PoundsForcePerSquareInch + 440.0 * 0.02 + 600.0 * 0.03 - 170.0 * 0.05;
+
+        Assert.Equal(expectedRankine, corrected.Temperature.DegreesRankine, 1e-9);
+        Assert.Equal(expectedPsia, corrected.Pressure.PoundsForcePerSquareInch, 1e-9);
+        Assert.Throws<ArgumentOutOfRangeException>(() => CarrKobayashiBurrowsCorrection.Apply(sweet, 0.0, 0.0, -0.1));
+        Assert.Throws<ArgumentException>(() => CarrKobayashiBurrowsCorrection.Apply(sweet, 0.5, 0.4, 0.2));
+    }
+
+    [Fact]
+    public void Standing_ShouldExposeBothPublishedIntercepts()
+    {
+        double whitson = new StandingPseudoCriticalCorrelation(StandingGasSystem.NaturalGas, StandingCoefficientSet.WhitsonBrule)
+            .Calculate(0.7).Pressure.PoundsForcePerSquareInch;
+        double ahmed = new StandingPseudoCriticalCorrelation(StandingGasSystem.NaturalGas, StandingCoefficientSet.Ahmed)
+            .Calculate(0.7).Pressure.PoundsForcePerSquareInch;
+
+        _output.WriteLine($"γ 0.7: Ppc (Whitson & Brulé) = {whitson:F3} psia, Ppc (Ahmed) = {ahmed:F3} psia");
+
+        Assert.Equal(10.0, ahmed - whitson, 1e-9);
+    }
+
     private static IPseudoCriticalCorrelation Correlation(string name) => name switch
     {
         "Sutton" => new SuttonPseudoCriticalCorrelation(),
-        "StandingNaturalGas" => new StandingPseudoCriticalCorrelation(StandingGasSystem.NaturalGas),
-        "StandingGasCondensate" => new StandingPseudoCriticalCorrelation(StandingGasSystem.GasCondensate),
+        "StandingNaturalGas" => new StandingPseudoCriticalCorrelation(StandingGasSystem.NaturalGas, StandingCoefficientSet.WhitsonBrule),
+        "StandingGasCondensate" => new StandingPseudoCriticalCorrelation(StandingGasSystem.GasCondensate, StandingCoefficientSet.WhitsonBrule),
         _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
     };
 }

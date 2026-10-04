@@ -203,14 +203,35 @@ public sealed class HallYarboroughModel : CorrespondingStatesCompressibilityMode
 /// Papay (1968), explicit:
 ///   Z = 1 − 3.53·Ppr / 10^(0.9813·Tpr) + 0.274·Ppr² / 10^(0.8157·Tpr)
 ///
-/// Closed form, no iteration. The sources consulted give no validity range; the
-/// range declared here is measured against DAK (the reference fit of the
-/// same chart): for 1.4 ≤ Tpr ≤ 3.0 and Ppr ≤ 4 the deviation stays within
-/// 3.2 % (largest +3.14 % at Tpr 1.4, Ppr 2.7). Outside it Papay degrades
-/// fast: up to 17 % at Tpr 1.2 and over 50 % at Tpr 1.1.
+/// Closed form, no iteration. The sources consulted give no validity range.
+/// The range declared here is where Papay stays within
+/// <see cref="MaxDeviationFromDak"/> (5 %) of DAK, the reference fit of the
+/// same chart. That region is not a rectangle: the largest acceptable Ppr
+/// grows from 0.53 at Tpr 1.0 to 7.45 at Tpr 1.4 and beyond, so it is
+/// tabulated every 0.05 in Tpr (<see cref="MaxReducedPressure"/>), each node
+/// rounded down to 0.01 and the lower of the two neighbouring nodes used in
+/// between. Scanned for Ppr ≤ 15. Dense check (401 × 300 points inside the
+/// region, 2026-10-04): largest deviation 4.998 %.
 /// </summary>
 public sealed class PapayModel : CorrespondingStatesCompressibilityModel
 {
+    /// <summary>Acceptance criterion used to build the validated range.</summary>
+    public const double MaxDeviationFromDak = 0.05;
+
+    private const double TableStart = 1.0;
+    private const double TableStep = 0.05;
+
+    // Largest Ppr with |Z_Papay − Z_DAK| / Z_DAK ≤ 5 % for every Ppr below it,
+    // at Tpr = 1.00, 1.05, …, 3.00. 15.0 = no exceedance up to the scan limit.
+    private static readonly double[] PressureLimits =
+    {
+        0.53, 0.67, 0.84, 1.02, 1.24, 1.51, 1.88, 4.90, 7.45, 7.20,
+        6.97, 6.80, 6.69, 6.66, 6.71, 6.82, 7.01, 7.25, 7.55, 7.92,
+        8.35, 8.84, 9.41, 10.04, 10.74, 11.52, 12.37, 13.31, 14.34, 15.00,
+        15.00, 15.00, 9.33, 7.97, 7.40, 7.02, 6.73, 6.50, 6.30, 6.14,
+        6.00
+    };
+
     public PapayModel(PseudoCriticalProperties pseudoCritical)
         : base(pseudoCritical)
     {
@@ -229,6 +250,32 @@ public sealed class PapayModel : CorrespondingStatesCompressibilityModel
     }
 
     public override bool IsWithinValidatedReducedRange(double reducedTemperature, double reducedPressure) =>
-        reducedTemperature >= 1.4 && reducedTemperature <= 3.0
-        && reducedPressure > 0.0 && reducedPressure <= 4.0;
+        reducedTemperature >= TableStart
+        && reducedTemperature <= TableStart + TableStep * (PressureLimits.Length - 1)
+        && reducedPressure > 0.0
+        && reducedPressure <= MaxReducedPressure(reducedTemperature);
+
+    /// <summary>
+    /// Largest Ppr inside the validated range at this Tpr (conservative:
+    /// lower of the two bracketing table nodes); 0 outside 1 ≤ Tpr ≤ 3.
+    /// </summary>
+    public static double MaxReducedPressure(double reducedTemperature)
+    {
+        double position = (reducedTemperature - TableStart) / TableStep;
+
+        if (!double.IsFinite(position) || position < -1e-9 || position > PressureLimits.Length - 1 + 1e-9)
+        {
+            return 0.0;
+        }
+
+        int i = System.Math.Clamp((int)System.Math.Floor(position + 1e-9), 0, PressureLimits.Length - 1);
+
+        // Exactly on a node: that node's limit; otherwise the lower neighbour.
+        if (System.Math.Abs(position - i) < 1e-9 || i == PressureLimits.Length - 1)
+        {
+            return PressureLimits[i];
+        }
+
+        return System.Math.Min(PressureLimits[i], PressureLimits[i + 1]);
+    }
 }

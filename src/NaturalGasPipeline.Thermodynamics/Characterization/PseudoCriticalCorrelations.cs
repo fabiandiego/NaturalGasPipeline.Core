@@ -79,7 +79,7 @@ public sealed class SuttonPseudoCriticalCorrelation : QuadraticPseudoCriticalCor
 /// <summary>Which of Standing's two curves to use.</summary>
 public enum StandingGasSystem
 {
-    /// <summary>Dry hydrocarbon gas: Tpc = 168 + 325γ − 12.5γ², Ppc = 667 + 15.0γ − 37.5γ².</summary>
+    /// <summary>Dry hydrocarbon gas: Tpc = 168 + 325γ − 12.5γ², Ppc = p₀ + 15.0γ − 37.5γ².</summary>
     NaturalGas,
 
     /// <summary>Wet gas / gas condensate: Tpc = 187 + 330γ − 71.5γ², Ppc = 706 − 51.7γ − 11.1γ².</summary>
@@ -87,37 +87,66 @@ public enum StandingGasSystem
 }
 
 /// <summary>
+/// Published versions of Standing's dry-gas Ppc curve, which differ in the
+/// intercept p₀. Both are in use; the caller states which one its data follow.
+/// </summary>
+public enum StandingCoefficientSet
+{
+    /// <summary>p₀ = 667 psia: Whitson &amp; Brulé, SPE Phase Behavior Monograph.</summary>
+    WhitsonBrule,
+
+    /// <summary>
+    /// p₀ = 677 psia: Ahmed, Reservoir Engineering Handbook, and the university
+    /// course notes that follow it (e.g. King Saud University PGE 362).
+    /// </summary>
+    Ahmed
+}
+
+/// <summary>
 /// Standing (1977) pseudo-critical curves, field units (°R, psia), for
 /// hydrocarbon gas without non-hydrocarbons (apply
-/// <see cref="WichertAzizCorrection"/> for CO₂/H₂S).
+/// <see cref="WichertAzizCorrection"/> or <see cref="CarrKobayashiBurrowsCorrection"/>
+/// for CO₂, H₂S, N₂).
 ///
-/// Sources disagree on two coefficients; this implementation uses
-/// Whitson &amp; Brulé, SPE Phase Behavior Monograph:
-/// - dry gas Ppc intercept 667 psia (some textbooks print 677; +1.5 % in Ppc);
-/// - condensate Ppc slope −51.7 (Ppc must fall as the gas gets heavier).
-/// Whitson &amp; Brulé recommend the dry-gas curve for γ ≤ 0.75 and the
-/// condensate curve above; <see cref="IsWithinValidatedRange"/> follows that.
+/// Sources disagree on the dry-gas Ppc intercept (667 or 677 psia, 1.5 % in
+/// Ppc); <see cref="StandingCoefficientSet"/> makes the choice explicit.
+/// The condensate curve is the same in both (Ppc slope −51.7: Ppc must fall
+/// as the gas gets heavier). Whitson &amp; Brulé recommend the dry-gas curve
+/// for γ ≤ 0.75 and the condensate curve above;
+/// <see cref="IsWithinValidatedRange"/> follows that.
 /// </summary>
 public sealed class StandingPseudoCriticalCorrelation : QuadraticPseudoCriticalCorrelation
 {
-    public StandingPseudoCriticalCorrelation(StandingGasSystem gasSystem)
+    public StandingPseudoCriticalCorrelation(
+        StandingGasSystem gasSystem,
+        StandingCoefficientSet coefficientSet)
     {
         if (!Enum.IsDefined(gasSystem))
         {
             throw new ArgumentOutOfRangeException(nameof(gasSystem), gasSystem, "Unknown gas system.");
         }
 
+        if (!Enum.IsDefined(coefficientSet))
+        {
+            throw new ArgumentOutOfRangeException(nameof(coefficientSet), coefficientSet, "Unknown coefficient set.");
+        }
+
         GasSystem = gasSystem;
+        CoefficientSet = coefficientSet;
     }
 
     public StandingGasSystem GasSystem { get; }
 
-    public override string Name => $"Standing (1977), {GasSystem}";
+    public StandingCoefficientSet CoefficientSet { get; }
+
+    public override string Name => $"Standing (1977), {GasSystem}, {CoefficientSet}";
 
     protected override (double T0, double T1, double T2, double P0, double P1, double P2) Coefficients =>
         GasSystem switch
         {
-            StandingGasSystem.NaturalGas => (168.0, 325.0, -12.5, 667.0, 15.0, -37.5),
+            StandingGasSystem.NaturalGas => (
+                168.0, 325.0, -12.5,
+                CoefficientSet == StandingCoefficientSet.Ahmed ? 677.0 : 667.0, 15.0, -37.5),
             _ => (187.0, 330.0, -71.5, 706.0, -51.7, -11.1)
         };
 
@@ -175,6 +204,57 @@ public static class WichertAzizCorrection
 
     public static bool IsWithinValidatedRange(double carbonDioxideMoleFraction, double hydrogenSulfideMoleFraction) =>
         carbonDioxideMoleFraction < 0.544 && hydrogenSulfideMoleFraction < 0.738;
+
+    private static void ValidateFraction(double value, string name)
+    {
+        if (!double.IsFinite(value) || value < 0.0 || value > 1.0)
+        {
+            throw new ArgumentOutOfRangeException(name, value, "Mole fraction must be between 0 and 1.");
+        }
+    }
+}
+
+/// <summary>
+/// Carr, Kobayashi &amp; Burrows (1954) correction of pseudo-critical
+/// properties for non-hydrocarbons, used when only the gas gravity is known
+/// (field units, as published):
+///   T'pc [°R]   = Tpc − 80·y_CO₂ + 130·y_H₂S − 250·y_N₂
+///   P'pc [psia] = Ppc + 440·y_CO₂ + 600·y_H₂S − 170·y_N₂
+/// Coefficients as in King Saud University PGE 362 (Khamis, 2015) and
+/// Ahmed, Reservoir Engineering Handbook. Never applied implicitly.
+/// </summary>
+public static class CarrKobayashiBurrowsCorrection
+{
+    public static PseudoCriticalProperties Apply(
+        PseudoCriticalProperties uncorrected,
+        double carbonDioxideMoleFraction,
+        double hydrogenSulfideMoleFraction,
+        double nitrogenMoleFraction)
+    {
+        ArgumentNullException.ThrowIfNull(uncorrected);
+        ValidateFraction(carbonDioxideMoleFraction, nameof(carbonDioxideMoleFraction));
+        ValidateFraction(hydrogenSulfideMoleFraction, nameof(hydrogenSulfideMoleFraction));
+        ValidateFraction(nitrogenMoleFraction, nameof(nitrogenMoleFraction));
+
+        if (carbonDioxideMoleFraction + hydrogenSulfideMoleFraction + nitrogenMoleFraction > 1.0)
+        {
+            throw new ArgumentException("y_CO₂ + y_H₂S + y_N₂ cannot exceed 1.");
+        }
+
+        double tpc = uncorrected.Temperature.DegreesRankine
+                     - 80.0 * carbonDioxideMoleFraction
+                     + 130.0 * hydrogenSulfideMoleFraction
+                     - 250.0 * nitrogenMoleFraction;
+
+        double ppc = uncorrected.Pressure.PoundsForcePerSquareInch
+                     + 440.0 * carbonDioxideMoleFraction
+                     + 600.0 * hydrogenSulfideMoleFraction
+                     - 170.0 * nitrogenMoleFraction;
+
+        return new PseudoCriticalProperties(
+            Temperature.FromDegreesRankine(tpc),
+            Pressure.FromPoundsForcePerSquareInch(ppc));
+    }
 
     private static void ValidateFraction(double value, string name)
     {

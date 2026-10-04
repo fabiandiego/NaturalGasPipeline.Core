@@ -19,11 +19,12 @@ src/
     Numerics/    CubicEquationSolver, BrentRootSolver
     Pipeline/    Pipe (DE, espesor), PipeSegment (DI, L, ε, Δz)
   NaturalGasPipeline.Thermodynamics  → Core
-    Components/      GasComponent, StandardGasComponents
+    Components/      GasComponent, StandardGasComponents (C1–nC4, N₂, CO₂, H₂S)
     Mixtures/        GasMixture, NaturalGasMixtures, parámetros de interacción binaria
     Characterization/ γ ↔ M (DryAirMolarMass: ISO 6976:2016, GPA 2145-09, GTHPS 28.96, 29),
-                      pseudocríticas: Kay, Sutton, Standing (gas natural / condensado),
-                      corrección Wichert-Aziz (CO₂, H₂S)
+                      pseudocríticas: Kay, Sutton, Standing (gas natural / condensado;
+                      coeficientes Whitson & Brulé o Ahmed), correcciones Wichert-Aziz
+                      y Carr-Kobayashi-Burrows (CO₂, H₂S, N₂)
     State/           GasState
     Compressibility/ ICompressibilityModel: ideal, Z constante, Peng-Robinson, SRK,
                      estados correspondientes (DAK, Hall-Yarborough, Papay), CNGA

@@ -14,7 +14,7 @@ namespace NaturalGasPipeline.Thermodynamics.Tests;
 ///
 /// Cross-model consistency (measured 2026-10-04, same chart, different fits):
 ///   Hall-Yarborough vs DAK, 1.15 ≤ Tpr ≤ 3, 0.2 ≤ Ppr ≤ 20.5: ≤ 2.9 %
-///   Papay vs DAK,           1.4 ≤ Tpr ≤ 3, Ppr ≤ 4:          ≤ 3.2 %
+///   Papay vs DAK, inside its tabulated range (criterion 5 %):  ≤ 5 %
 /// </summary>
 public class CorrespondingStatesImplementationTests
 {
@@ -101,14 +101,58 @@ public class CorrespondingStatesImplementationTests
         Assert.True(worst < 0.03);
     }
 
+    /// <summary>
+    /// The tabulated Papay range is tight: inside it the deviation from DAK
+    /// stays within 5 %, and just past its upper Ppr edge it exceeds 5 %.
+    /// </summary>
     [Fact]
-    public void Papay_ShouldAgreeWithDakInsideItsValidatedRange()
+    public void Papay_ShouldStayWithinFivePercentOfDakInsideItsValidatedRange()
     {
-        double worst = MaxDeviationFromDak(new PapayModel(Reference), 1.4, 3.0, 0.2, 4.0);
+        var papay = new PapayModel(Reference);
+        var dak = new DranchukAbouKassemModel(Reference);
 
-        _output.WriteLine($"max |Z_Papay − Z_DAK| / Z_DAK = {worst * 100:F3} % (allowed 3.2 %)");
+        double worst = 0.0;
+        double worstTr = 0.0;
+        double worstPr = 0.0;
 
-        Assert.True(worst < 0.032);
+        for (int i = 0; i <= 200; i++)
+        {
+            double tr = 1.0 + i * 0.01;
+            double prMax = PapayModel.MaxReducedPressure(tr);
+
+            for (int j = 1; j <= 100; j++)
+            {
+                double pr = prMax * j / 100.0;
+                double reference = dak.CalculateFromReducedProperties(tr, pr);
+                double deviation = System.Math.Abs(papay.CalculateFromReducedProperties(tr, pr) - reference) / reference;
+
+                if (deviation > worst)
+                {
+                    worst = deviation;
+                    worstTr = tr;
+                    worstPr = pr;
+                }
+
+                Assert.True(papay.IsWithinValidatedReducedRange(tr, pr));
+            }
+        }
+
+        _output.WriteLine($"max |Z_Papay − Z_DAK| / Z_DAK inside the range = {worst * 100:F3} % at Tpr {worstTr:F2}, Ppr {worstPr:F3}");
+
+        Assert.True(worst <= PapayModel.MaxDeviationFromDak);
+
+        // Tightness: 0.02 above the limit at selected table nodes, Papay is already > 5 % off.
+        foreach (double tr in new[] { 1.0, 1.2, 1.4, 1.65, 2.0, 3.0 })
+        {
+            double pr = PapayModel.MaxReducedPressure(tr) + 0.02;
+            double reference = dak.CalculateFromReducedProperties(tr, pr);
+            double deviation = System.Math.Abs(papay.CalculateFromReducedProperties(tr, pr) - reference) / reference;
+
+            _output.WriteLine($"Tpr {tr:F2}: limit Ppr {PapayModel.MaxReducedPressure(tr):F2}, deviation just above = {deviation * 100:F2} %");
+
+            Assert.False(papay.IsWithinValidatedReducedRange(tr, pr));
+            Assert.True(deviation > PapayModel.MaxDeviationFromDak);
+        }
     }
 
     [Fact]
@@ -123,8 +167,12 @@ public class CorrespondingStatesImplementationTests
         Assert.False(hy.IsWithinValidatedReducedRange(1.1, 1.0));
         Assert.True(hy.IsWithinValidatedReducedRange(1.5, 20.0));
         Assert.True(papay.IsWithinValidatedReducedRange(1.45, 1.5));
-        Assert.False(papay.IsWithinValidatedReducedRange(1.25, 1.5));
-        Assert.False(papay.IsWithinValidatedReducedRange(2.0, 6.0));
+        Assert.True(papay.IsWithinValidatedReducedRange(2.0, 8.0));
+        Assert.False(papay.IsWithinValidatedReducedRange(1.25, 1.6));   // limit min(1.51, 1.88)
+        Assert.False(papay.IsWithinValidatedReducedRange(2.0, 9.0));    // limit 8.35
+        Assert.False(papay.IsWithinValidatedReducedRange(0.95, 0.3));
+        Assert.Equal(4.90, PapayModel.MaxReducedPressure(1.35), 12);
+        Assert.Equal(1.88, PapayModel.MaxReducedPressure(1.32), 12);
     }
 
     [Fact]

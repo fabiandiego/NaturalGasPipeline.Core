@@ -63,4 +63,45 @@ public static class StandardGasComponents
             Pressure.FromPascals(7_377_300),
         AcentricFactor = 0.22394
     };
+
+    // Reference-equation critical points, molar masses and acentric factors
+    // as tabulated by CoolProp (retrieved 2026-10-04):
+    // n-butane and isobutane: Bücker & Wagner, J. Phys. Chem. Ref. Data 35(2), 929 (2006);
+    // hydrogen sulfide: Lemmon & Span, J. Chem. Eng. Data 51, 785 (2006).
+
+    public static GasComponent IsoButane => new()
+    {
+        Name = "IsoButane",
+        MoleFraction = 1.0,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.0581222),
+        CriticalTemperature =
+            Temperature.FromKelvins(407.81),
+        CriticalPressure =
+            Pressure.FromPascals(3_629_000),
+        AcentricFactor = 0.1835
+    };
+
+    public static GasComponent NormalButane => new()
+    {
+        Name = "NormalButane",
+        MoleFraction = 1.0,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.0581222),
+        CriticalTemperature =
+            Temperature.FromKelvins(425.125),
+        CriticalPressure =
+            Pressure.FromPascals(3_796_000),
+        AcentricFactor = 0.2008
+    };
+
+    public static GasComponent HydrogenSulfide => new()
+    {
+        Name = "HydrogenSulfide",
+        MoleFraction = 1.0,
+        MolarMass = MolarMass.FromKilogramsPerMole(0.03408088),
+        CriticalTemperature =
+            Temperature.FromKelvins(373.1),
+        CriticalPressure =
+            Pressure.FromPascals(8_998_900),
+        AcentricFactor = 0.1005
+    };
 }
