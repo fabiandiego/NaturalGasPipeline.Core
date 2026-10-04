@@ -38,16 +38,26 @@ src/
     IGasFlowEquation: General Flow / AGA (cualquier modelo de fricción),
                       Weymouth, Panhandle A, Panhandle B (eficiencia E explícita)
     GasFlowEquationSolver: resuelve Q, P2, P1 o diámetro interno
+  NaturalGasPipeline.Compression     → Core, Thermodynamics
+    CompressorStage: potencia isentrópica o politrópica, T de descarga, Z media
+    CompressorStation: N etapas con igual relación y enfriamiento intermedio opcional
+  NaturalGasPipeline.Network         → todos los anteriores
+    ISegmentModel: solver isotérmico SI o cualquier ecuación de flujo, en flujo másico
+    PipelineProfile: tramos desde un perfil (progresiva, cota) y subdivisión
+    SeriesSystem: tuberías, compresores y enfriadores en serie (hacia adelante,
+                  hacia atrás o resolviendo el flujo másico)
   NaturalGasPipeline.Mechanics       → Core (reservado)
 tests/
   NaturalGasPipeline.Core.Tests
   NaturalGasPipeline.Thermodynamics.Tests
   NaturalGasPipeline.Hydraulics.Tests
   NaturalGasPipeline.Correlations.Tests
+  NaturalGasPipeline.Compression.Tests
+  NaturalGasPipeline.Network.Tests
 ```
 
-Las dependencias van en una sola dirección: `Core ← Thermodynamics ← Hydraulics ← Correlations`.
-Los próximos módulos (Solver, Network, Validation) seguirán la misma regla.
+Las dependencias van en una sola dirección: `Core ← Thermodynamics ← Hydraulics ← Correlations ← Network` (y `Thermodynamics ← Compression ← Network`).
+Los próximos módulos (red con nodos y lazos, Validation) seguirán la misma regla.
 
 ## Cómo añadir un modelo
 

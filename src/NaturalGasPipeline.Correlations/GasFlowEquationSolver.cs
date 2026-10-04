@@ -103,7 +103,7 @@ public sealed class GasFlowEquationSolver
 
             if (p2Squared <= 0.0)
             {
-                throw new InvalidOperationException(
+                throw new FlowCapacityExceededException(
                     "The flow exceeds the capacity of the segment for this inlet pressure (P2² ≤ 0).");
             }
 

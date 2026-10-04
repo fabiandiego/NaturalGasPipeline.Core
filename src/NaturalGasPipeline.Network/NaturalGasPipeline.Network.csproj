@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="UnitsNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NaturalGasPipeline.Core\NaturalGasPipeline.Core.csproj" />
+    <ProjectReference Include="..\NaturalGasPipeline.Thermodynamics\NaturalGasPipeline.Thermodynamics.csproj" />
+    <ProjectReference Include="..\NaturalGasPipeline.Hydraulics\NaturalGasPipeline.Hydraulics.csproj" />
+    <ProjectReference Include="..\NaturalGasPipeline.Correlations\NaturalGasPipeline.Correlations.csproj" />
+    <ProjectReference Include="..\NaturalGasPipeline.Compression\NaturalGasPipeline.Compression.csproj" />
+  </ItemGroup>
+
+</Project>

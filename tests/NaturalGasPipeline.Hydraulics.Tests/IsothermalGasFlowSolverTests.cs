@@ -384,7 +384,7 @@ public class IsothermalGasFlowSolverTests
     [Fact]
     public void MassFlowAboveCapacity_ShouldThrow()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<FlowCapacityExceededException>(() =>
             TypicalGasSolver().SolveOutletPressure(
                 Segment(0.5, 50_000, 0.0),
                 Temperature.FromKelvins(288.15),

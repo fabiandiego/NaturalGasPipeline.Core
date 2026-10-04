@@ -32,6 +32,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Correlat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Correlations.Tests", "tests\NaturalGasPipeline.Correlations.Tests\NaturalGasPipeline.Correlations.Tests.csproj", "{57CE7684-FD53-4F1A-99F7-B0E10E62C4F2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Compression", "src\NaturalGasPipeline.Compression\NaturalGasPipeline.Compression.csproj", "{F9B1DA94-A19C-432C-864C-1E8C9E0B182C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Network", "src\NaturalGasPipeline.Network\NaturalGasPipeline.Network.csproj", "{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Compression.Tests", "tests\NaturalGasPipeline.Compression.Tests\NaturalGasPipeline.Compression.Tests.csproj", "{4D05A40D-58A7-426D-A2E0-1074DB7B47B9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Network.Tests", "tests\NaturalGasPipeline.Network.Tests\NaturalGasPipeline.Network.Tests.csproj", "{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +82,22 @@ Global
 		{57CE7684-FD53-4F1A-99F7-B0E10E62C4F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{57CE7684-FD53-4F1A-99F7-B0E10E62C4F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{57CE7684-FD53-4F1A-99F7-B0E10E62C4F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9B1DA94-A19C-432C-864C-1E8C9E0B182C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9B1DA94-A19C-432C-864C-1E8C9E0B182C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9B1DA94-A19C-432C-864C-1E8C9E0B182C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9B1DA94-A19C-432C-864C-1E8C9E0B182C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -88,6 +112,10 @@ Global
 		{9CBA7676-2BE4-4429-87FC-3CB3190DF4B0} = {90552509-5A20-4679-80A3-95905B0DE3E1}
 		{B399FF12-48D7-4616-AA94-D9BFB4DE3D2F} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
 		{57CE7684-FD53-4F1A-99F7-B0E10E62C4F2} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+		{F9B1DA94-A19C-432C-864C-1E8C9E0B182C} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
+		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A} = {90552509-5A20-4679-80A3-95905B0DE3E1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0121B387-7EE0-44A7-B8E1-CC47D5981FBF}

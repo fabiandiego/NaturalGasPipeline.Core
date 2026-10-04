@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Flow;
 using UnitsNet;
 using NaturalGasPipeline.Core.Pipeline;
 using NaturalGasPipeline.Thermodynamics;
@@ -137,7 +138,7 @@ public sealed class IsothermalGasFlowSolver
 
             if (p2Squared <= 0.0)
             {
-                throw new InvalidOperationException(
+                throw new FlowCapacityExceededException(
                     $"No physical outlet pressure: the requested mass flow " +
                     $"{m} kg/s exceeds the capacity of the segment for P1 = {p1} Pa.");
             }
