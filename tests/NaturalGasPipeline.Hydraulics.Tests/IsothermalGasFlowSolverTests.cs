@@ -169,7 +169,7 @@ public class IsothermalGasFlowSolverTests
             molarMass,
             new ConstantCompressibilityModel(0.67),
             new ConstantViscosityModel(DynamicViscosity.FromCentipoise(0.013)),
-            darcyFrictionFactorOverride: darcyFrictionFactor);
+            frictionModel: new ConstantDarcyFrictionModel(darcyFrictionFactor));
 
         GasFlowSolution s = solver.SolveOutletPressure(
             PipeSegment.Horizontal(
@@ -271,6 +271,65 @@ public class IsothermalGasFlowSolverTests
         _output.WriteLine($"s = {s:E2}: {value:R} (reference {expected:R}, rel. error {error:E1})");
 
         Assert.True(error < 1e-10, $"Relative error {error:E2}");
+    }
+
+    /// <summary>
+    /// Changing the friction correlation must change the result only by the
+    /// correlation's own deviation from Colebrook (here Re ≈ 2·10⁷, ε/D = 9·10⁻⁵,
+    /// where all of them agree within about 0.5 %).
+    /// </summary>
+    [Theory]
+    [InlineData(FrictionFactorModelType.Haaland)]
+    [InlineData(FrictionFactorModelType.SwameeJain)]
+    [InlineData(FrictionFactorModelType.Churchill)]
+    public void FrictionModel_ShouldBeInterchangeable(FrictionFactorModelType type)
+    {
+        var segment = Segment(0.5, 50_000, 0.0);
+        var t = Temperature.FromKelvins(288.15);
+        var p1 = Pressure.FromMegapascals(7.0);
+        var m = MassFlow.FromKilogramsPerSecond(100.0);
+
+        GasFlowSolution colebrook = TypicalGasSolver().SolveOutletPressure(segment, t, p1, m);
+
+        GasFlowSolution other = IsothermalGasFlowSolver.ForMixture(
+                NaturalGasMixtures.TypicalNaturalGas,
+                CompressibilityModelType.PengRobinson,
+                new LeeGonzalezEakinViscosityModel(),
+                FrictionFactorModelFactory.Create(type))
+            .SolveOutletPressure(segment, t, p1, m);
+
+        double frictionDeviation =
+            (other.DarcyFrictionFactor - colebrook.DarcyFrictionFactor) / colebrook.DarcyFrictionFactor;
+
+        double pressureDropDeviation =
+            (other.PressureDrop.Pascals - colebrook.PressureDrop.Pascals) / colebrook.PressureDrop.Pascals;
+
+        _output.WriteLine($"{other.FrictionModel}: f = {other.DarcyFrictionFactor:F6} vs Colebrook {colebrook.DarcyFrictionFactor:F6} ({frictionDeviation * 100:+0.000;-0.000} %)");
+        _output.WriteLine($"ΔP = {other.PressureDrop.Bars:F4} bar vs {colebrook.PressureDrop.Bars:F4} bar ({pressureDropDeviation * 100:+0.000;-0.000} %)");
+
+        Assert.Equal("Colebrook-White", colebrook.FrictionModel);
+        Assert.InRange(frictionDeviation, -0.01, 0.01);
+        Assert.InRange(pressureDropDeviation, -0.01, 0.01);
+    }
+
+    [Fact]
+    public void FrictionModelOutsideItsRange_ShouldProduceWarning()
+    {
+        // Swamee-Jain is validated for ε/D ≥ 1e-6; a smooth pipe is outside.
+        var smooth = new PipeSegment(
+            Length.FromMeters(0.5), Length.FromKilometers(50.0), Length.Zero, Length.Zero);
+
+        GasFlowSolution s = IsothermalGasFlowSolver.ForMixture(
+                NaturalGasMixtures.TypicalNaturalGas,
+                CompressibilityModelType.PengRobinson,
+                new LeeGonzalezEakinViscosityModel(),
+                new SwameeJainModel())
+            .SolveOutletPressure(smooth, Temperature.FromKelvins(288.15), Pressure.FromMegapascals(7.0),
+                MassFlow.FromKilogramsPerSecond(100.0));
+
+        Print(s);
+
+        Assert.Contains(s.Warnings, w => w.Contains("Swamee-Jain"));
     }
 
     [Fact]

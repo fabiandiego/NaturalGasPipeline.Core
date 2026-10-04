@@ -25,7 +25,9 @@ src/
     Compressibility/ ICompressibilityModel: ideal, Z constante, Peng-Robinson, SRK
     Viscosity/       IViscosityModel: Lee-Gonzalez-Eakin, constante
   NaturalGasPipeline.Hydraulics      → Core, Thermodynamics
-    Reynolds, fricción (Colebrook), Darcy-Weisbach, IsothermalGasFlowSolver
+    Friction/    IFrictionFactorModel: Colebrook-White, Haaland, Swamee-Jain, Churchill,
+                 AGA totalmente turbulento, f constante, F (factor de transmisión) constante
+    Reynolds, Darcy-Weisbach, IsothermalGasFlowSolver
   NaturalGasPipeline.Mechanics       → Core (reservado)
 tests/
   NaturalGasPipeline.Core.Tests
@@ -38,7 +40,7 @@ Los próximos módulos (Correlations, Solver, Network, Validation) seguirán la 
 
 ## Cómo añadir un modelo
 
-1. Implementar la interfaz de su familia (`ICompressibilityModel`, `IViscosityModel`, …) en la carpeta correspondiente.
+1. Implementar la interfaz de su familia (`ICompressibilityModel`, `IViscosityModel`, `IFrictionFactorModel`, …) en la carpeta correspondiente.
 2. Documentar en el XML la fuente, las unidades propias de la correlación y su rango de validez.
 3. Convertir a las unidades de la correlación solo dentro del modelo; hacia fuera, siempre tipos de UnitsNet.
 4. Añadir pruebas en dos niveles:

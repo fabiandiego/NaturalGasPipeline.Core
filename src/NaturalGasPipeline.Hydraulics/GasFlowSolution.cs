@@ -28,6 +28,9 @@ public sealed record GasFlowSolution
 
     public required double DarcyFrictionFactor { get; init; }
 
+    /// <summary>Name of the friction factor model that produced <see cref="DarcyFrictionFactor"/>.</summary>
+    public required string FrictionModel { get; init; }
+
     public required Speed InletVelocity { get; init; }
 
     public required Speed OutletVelocity { get; init; }

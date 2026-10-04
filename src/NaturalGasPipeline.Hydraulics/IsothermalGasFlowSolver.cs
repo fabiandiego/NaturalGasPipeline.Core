@@ -40,16 +40,17 @@ public sealed class IsothermalGasFlowSolver
     private readonly MolarMass _molarMass;
     private readonly ICompressibilityModel _compressibility;
     private readonly IViscosityModel _viscosity;
-    private readonly double? _darcyFrictionFactorOverride;
+    private readonly IFrictionFactorModel _friction;
     private readonly double _relativeTolerance;
     private readonly int _maxIterations;
 
     /// <param name="molarMass">Molar mass of the gas.</param>
     /// <param name="compressibilityModel">Z(P, T) model for this gas.</param>
     /// <param name="viscosityModel">μ(T, ρ, M) model for this gas.</param>
-    /// <param name="darcyFrictionFactorOverride">
-    /// Optional user-specified Darcy friction factor. When given, Colebrook
-    /// is not used and roughness is ignored for friction.
+    /// <param name="frictionModel">
+    /// Darcy friction factor model. Default: Colebrook-White. Use
+    /// <see cref="ConstantDarcyFrictionModel"/> or
+    /// <see cref="ConstantTransmissionFactorModel"/> for a user-specified value.
     /// </param>
     /// <param name="relativeTolerance">Convergence tolerance on pressure (relative).</param>
     /// <param name="maxIterations">Iteration limit; exceeding it throws.</param>
@@ -57,7 +58,7 @@ public sealed class IsothermalGasFlowSolver
         MolarMass molarMass,
         ICompressibilityModel compressibilityModel,
         IViscosityModel viscosityModel,
-        double? darcyFrictionFactorOverride = null,
+        IFrictionFactorModel? frictionModel = null,
         double relativeTolerance = 1e-10,
         int maxIterations = 200)
     {
@@ -70,13 +71,6 @@ public sealed class IsothermalGasFlowSolver
         {
             throw new ArgumentOutOfRangeException(
                 nameof(molarMass), m, "Molar mass must be finite and greater than zero.");
-        }
-
-        if (darcyFrictionFactorOverride is double f &&
-            (!double.IsFinite(f) || f <= 0.0))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(darcyFrictionFactorOverride), f, "Friction factor must be finite and greater than zero.");
         }
 
         if (!double.IsFinite(relativeTolerance) || relativeTolerance <= 0.0)
@@ -94,7 +88,7 @@ public sealed class IsothermalGasFlowSolver
         _molarMass = molarMass;
         _compressibility = compressibilityModel;
         _viscosity = viscosityModel;
-        _darcyFrictionFactorOverride = darcyFrictionFactorOverride;
+        _friction = frictionModel ?? new ColebrookWhiteModel();
         _relativeTolerance = relativeTolerance;
         _maxIterations = maxIterations;
     }
@@ -106,6 +100,7 @@ public sealed class IsothermalGasFlowSolver
         GasMixture mixture,
         CompressibilityModelType compressibilityModelType,
         IViscosityModel viscosityModel,
+        IFrictionFactorModel? frictionModel = null,
         BinaryInteractionDatabase? interactionDatabase = null)
     {
         ArgumentNullException.ThrowIfNull(mixture);
@@ -115,7 +110,8 @@ public sealed class IsothermalGasFlowSolver
         return new IsothermalGasFlowSolver(
             mixture.CalculateMolarMass(),
             CompressibilityModelFactory.Create(compressibilityModelType, mixture, interactionDatabase),
-            viscosityModel);
+            viscosityModel,
+            frictionModel);
     }
 
     /// <summary>Given P1 and ṁ, find P2.</summary>
@@ -221,7 +217,12 @@ public sealed class IsothermalGasFlowSolver
         double area = System.Math.PI * d * d / 4.0;
         double factor = avg.A * segment.Length.Meters / d * ElevationFactor(avg.S);
 
-        double f = _darcyFrictionFactorOverride ?? 0.01;
+        double relativeRoughness =
+            FrictionFactorModelExtensions.RelativeRoughness(
+                segment.InternalDiameter,
+                segment.AbsoluteRoughness);
+
+        double f = 0.01;
         double m = 0.0;
 
         for (int iteration = 1; iteration <= _maxIterations; iteration++)
@@ -229,18 +230,9 @@ public sealed class IsothermalGasFlowSolver
             double massFlux = System.Math.Sqrt(drivingTerm / (f * factor));
             m = massFlux * area;
 
-            if (_darcyFrictionFactorOverride is not null)
-            {
-                return BuildSolution(segment, t, p1, p2, m, iteration);
-            }
-
             double reynolds = 4.0 * m / (System.Math.PI * d * avg.Viscosity);
 
-            double fNew =
-                FrictionFactorCalculator.CalculateDarcyFrictionFactor(
-                    reynolds,
-                    segment.InternalDiameter,
-                    segment.AbsoluteRoughness);
+            double fNew = _friction.CalculateDarcyFrictionFactor(reynolds, relativeRoughness);
 
             if (System.Math.Abs(fNew - f) <= _relativeTolerance * fNew)
             {
@@ -311,13 +303,12 @@ public sealed class IsothermalGasFlowSolver
             ? 4.0 * mf / (System.Math.PI * d * mu)
             : double.NaN;
 
-        double f = _darcyFrictionFactorOverride
-            ?? (double.IsNaN(reynolds)
-                ? double.NaN
-                : FrictionFactorCalculator.CalculateDarcyFrictionFactor(
-                    reynolds,
-                    segment.InternalDiameter,
-                    segment.AbsoluteRoughness));
+        double f = double.IsNaN(reynolds)
+            ? double.NaN
+            : _friction.CalculateDarcyFrictionFactor(
+                reynolds,
+                segment.InternalDiameter,
+                segment.AbsoluteRoughness);
 
         double s = 2.0 * StandardGravity * segment.ElevationChange.Meters / a;
 
@@ -345,6 +336,18 @@ public sealed class IsothermalGasFlowSolver
         double v2 = m / (rho2 * area);
 
         var warnings = new List<string>();
+
+        double relativeRoughness =
+            FrictionFactorModelExtensions.RelativeRoughness(
+                segment.InternalDiameter,
+                segment.AbsoluteRoughness);
+
+        if (!_friction.IsWithinValidatedRange(avg.Reynolds, relativeRoughness))
+        {
+            warnings.Add(
+                $"Friction model {_friction.Name} is used outside its validated range " +
+                $"(Re = {avg.Reynolds:E3}, ε/D = {relativeRoughness:E3}).");
+        }
 
         if (avg.Reynolds < 4000.0)
         {
@@ -387,6 +390,7 @@ public sealed class IsothermalGasFlowSolver
             AverageViscosity = DynamicViscosity.FromPascalSeconds(avg.Viscosity),
             ReynoldsNumber = avg.Reynolds,
             DarcyFrictionFactor = avg.F,
+            FrictionModel = _friction.Name,
             InletVelocity = Speed.FromMetersPerSecond(v1),
             OutletVelocity = Speed.FromMetersPerSecond(v2),
             ElevationParameter = avg.S,
