@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Hydraulics;
@@ -38,7 +39,7 @@ public static class FrictionFactorModelExtensions
         Length internalDiameter,
         Length absoluteRoughness)
     {
-        ArgumentNullException.ThrowIfNull(model);
+        Guard.NotNull(model);
 
         return model.CalculateDarcyFrictionFactor(
             reynoldsNumber,

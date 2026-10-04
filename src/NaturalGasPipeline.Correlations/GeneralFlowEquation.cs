@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Hydraulics;
 using UnitsNet;
 
@@ -56,7 +57,7 @@ public sealed class GeneralFlowEquation : IGasFlowEquation
 
     public FlowEquationEvaluation CalculateFlow(double pressureTermPascalsSquared, FlowEquationTerms terms)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
 
         if (!double.IsFinite(pressureTermPascalsSquared) || pressureTermPascalsSquared <= 0.0)
         {
@@ -95,7 +96,7 @@ public sealed class GeneralFlowEquation : IGasFlowEquation
 
     public FlowEquationEvaluation CalculatePressureTerm(VolumeFlow standardFlow, FlowEquationTerms terms)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
 
         double q = FieldUnits.CubicFeetPerDay(standardFlow);
 
@@ -118,7 +119,7 @@ public sealed class GeneralFlowEquation : IGasFlowEquation
 
     public IEnumerable<string> CheckApplicability(FlowEquationTerms terms, FlowEquationEvaluation evaluation)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
 
         if (evaluation.ReynoldsNumber is double re
             && !_friction.IsWithinValidatedRange(re, RelativeRoughness(terms)))

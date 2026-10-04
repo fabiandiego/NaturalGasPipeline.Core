@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 namespace NaturalGasPipeline.Core.Numerics;
 
 /// <summary>
@@ -30,7 +31,7 @@ public static class BrentRootSolver
         double absoluteTolerance = 1e-14,
         int maxIterations = 200)
     {
-        ArgumentNullException.ThrowIfNull(function);
+        Guard.NotNull(function);
 
         if (!double.IsFinite(lower) || !double.IsFinite(upper) || lower >= upper)
         {

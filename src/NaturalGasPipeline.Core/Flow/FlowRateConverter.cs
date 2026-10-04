@@ -46,7 +46,7 @@ public static class FlowRateConverter
         MolarMass molarMass,
         StandardFlowConditions standardConditions)
     {
-        ArgumentNullException.ThrowIfNull(standardConditions);
+        Guard.NotNull(standardConditions);
         standardConditions.Validate();
 
         double m = massFlow.KilogramsPerSecond;
@@ -72,7 +72,7 @@ public static class FlowRateConverter
         StandardVolumetricFlow standardVolumetricFlow,
         MolarMass molarMass)
     {
-        ArgumentNullException.ThrowIfNull(standardVolumetricFlow);
+        Guard.NotNull(standardVolumetricFlow);
 
         StandardFlowConditions conditions = standardVolumetricFlow.Conditions;
         conditions.Validate();

@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Compression;
 using NaturalGasPipeline.Core.Flow;
 using NaturalGasPipeline.Core.Numerics;
@@ -50,7 +51,7 @@ public sealed class SeriesSystem
 
     public SeriesSystem(IEnumerable<SystemElement> elements)
     {
-        ArgumentNullException.ThrowIfNull(elements);
+        Guard.NotNull(elements);
         _elements = elements.ToList();
 
         if (_elements.Count == 0)

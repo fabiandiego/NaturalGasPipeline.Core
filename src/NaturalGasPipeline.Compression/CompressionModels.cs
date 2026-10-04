@@ -53,7 +53,7 @@ public sealed class CompressorStage
             throw new ArgumentOutOfRangeException(nameof(heatCapacityRatio), heatCapacityRatio, "k = cp/cv must be greater than 1.");
         }
 
-        if (!Enum.IsDefined(efficiencyBasis))
+        if (!Guard.IsDefined(efficiencyBasis))
         {
             throw new ArgumentOutOfRangeException(nameof(efficiencyBasis), efficiencyBasis, "Unknown efficiency basis.");
         }

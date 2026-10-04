@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 namespace NaturalGasPipeline.Thermodynamics;
 
 public static class CompressibilityModelFactory
@@ -13,7 +14,7 @@ public static class CompressibilityModelFactory
         GasMixture mixture,
         BinaryInteractionDatabase? interactionDatabase = null)
     {
-        ArgumentNullException.ThrowIfNull(mixture);
+        Guard.NotNull(mixture);
 
         return modelType switch
         {
@@ -71,7 +72,7 @@ public static class CompressibilityModelFactory
         double specificGravity,
         IPseudoCriticalCorrelation pseudoCriticalCorrelation)
     {
-        ArgumentNullException.ThrowIfNull(pseudoCriticalCorrelation);
+        Guard.NotNull(pseudoCriticalCorrelation);
 
         return Create(modelType, pseudoCriticalCorrelation.Calculate(specificGravity));
     }

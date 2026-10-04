@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Flow;
 using NaturalGasPipeline.Core.Numerics;
 using NaturalGasPipeline.Core.Pipeline;
@@ -47,7 +48,7 @@ public sealed class NetworkSolver
     /// <param name="initialPressures">Optional starting pressures of fixed-flow nodes; the default is 90 % of the mean fixed pressure (a start with zero pressure differences gives zero flows, where turbulent flow laws have an infinite slope).</param>
     public NetworkSolution Solve(GasNetwork network, IReadOnlyDictionary<string, Pressure>? initialPressures = null)
     {
-        ArgumentNullException.ThrowIfNull(network);
+        Guard.NotNull(network);
 
         var index = new Dictionary<string, int>(StringComparer.Ordinal);
         for (int i = 0; i < network.Nodes.Count; i++)

@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Correlations;
@@ -78,7 +79,7 @@ public sealed class PowerLawFlowEquation : IGasFlowEquation
 
     public FlowEquationEvaluation CalculateFlow(double pressureTermPascalsSquared, FlowEquationTerms terms)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
         RequirePositive(pressureTermPascalsSquared, nameof(pressureTermPascalsSquared));
 
         double n = FieldUnits.PsiSquared(pressureTermPascalsSquared);
@@ -89,7 +90,7 @@ public sealed class PowerLawFlowEquation : IGasFlowEquation
 
     public FlowEquationEvaluation CalculatePressureTerm(VolumeFlow standardFlow, FlowEquationTerms terms)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
 
         double q = FieldUnits.CubicFeetPerDay(standardFlow);
         RequirePositive(q, nameof(standardFlow));
@@ -101,7 +102,7 @@ public sealed class PowerLawFlowEquation : IGasFlowEquation
 
     public IEnumerable<string> CheckApplicability(FlowEquationTerms terms, FlowEquationEvaluation evaluation)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        Guard.NotNull(terms);
 
         if (Efficiency > 1.0)
         {

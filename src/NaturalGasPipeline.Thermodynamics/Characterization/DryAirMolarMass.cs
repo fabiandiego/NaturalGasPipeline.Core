@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Thermodynamics;
@@ -56,7 +57,7 @@ public static class SpecificGravity
     /// <summary>γ of a mixture of known composition, γ = Σ yᵢ·Mᵢ / M_air.</summary>
     public static double OfMixture(GasMixture mixture, MolarMass airMolarMass)
     {
-        ArgumentNullException.ThrowIfNull(mixture);
+        Guard.NotNull(mixture);
 
         mixture.ValidateComposition();
 

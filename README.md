@@ -71,6 +71,19 @@ Los próximos módulos (Validation, compresores dentro de la red) seguirán la m
    - **Precisión**: el modelo comparado con datos reales o publicados (NIST, ejemplos de libro), con la banda de error medida y documentada.
 5. Las constantes físicas van en `PhysicalConstants`, nunca declaradas localmente.
 
+## Uso desde Unity
+
+Las bibliotecas de `src/` se compilan para `netstandard2.1` (lo que Unity 6 puede cargar: Mono, C# 9) y para `net8.0` (pruebas y aplicaciones .NET).
+Para generar las DLL que necesita Unity (motor + UnitsNet):
+
+```
+scripts/build-unity-plugins.ps1      (Windows)
+scripts/build-unity-plugins.sh       (Linux)
+```
+
+El resultado queda en `artifacts/UnityPlugins`; se copia a `Assets/_Project/Plugins/Engine` del proyecto Unity.
+En netstandard2.1 faltan algunas API de .NET 8: usar `Guard.NotNull` y `Guard.IsDefined` (Core.Common) en lugar de `ArgumentNullException.ThrowIfNull` y `Enum.IsDefined<T>`; los atributos del compilador (`init`, `required`) los aporta PolySharp.
+
 ## Compilar y probar
 
 Abrir `NaturalGasPipeline.sln` en Visual Studio 2022 y ejecutar todas las pruebas desde el Explorador de pruebas

@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Core.Flow;
@@ -16,7 +17,7 @@ public sealed record StandardVolumetricFlow
         VolumeFlow value,
         StandardFlowConditions conditions)
     {
-        ArgumentNullException.ThrowIfNull(conditions);
+        Guard.NotNull(conditions);
 
         conditions.Validate();
 

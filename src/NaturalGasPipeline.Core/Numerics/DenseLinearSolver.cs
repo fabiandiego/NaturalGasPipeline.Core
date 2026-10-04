@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 namespace NaturalGasPipeline.Core.Numerics;
 
 /// <summary>
@@ -10,8 +11,8 @@ public static class DenseLinearSolver
     /// <exception cref="InvalidOperationException">A is singular to working precision.</exception>
     public static double[] Solve(double[,] a, double[] b)
     {
-        ArgumentNullException.ThrowIfNull(a);
-        ArgumentNullException.ThrowIfNull(b);
+        Guard.NotNull(a);
+        Guard.NotNull(b);
 
         int n = b.Length;
 

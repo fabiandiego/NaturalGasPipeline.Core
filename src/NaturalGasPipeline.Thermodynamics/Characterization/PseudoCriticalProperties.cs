@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Thermodynamics;
@@ -56,7 +57,7 @@ public sealed record PseudoCriticalProperties
     /// </summary>
     public static PseudoCriticalProperties FromKay(GasMixture mixture)
     {
-        ArgumentNullException.ThrowIfNull(mixture);
+        Guard.NotNull(mixture);
 
         return new PseudoCriticalProperties(
             mixture.CalculateCriticalTemperature(),

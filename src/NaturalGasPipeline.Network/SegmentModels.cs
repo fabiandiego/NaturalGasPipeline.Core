@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Flow;
 using NaturalGasPipeline.Core.Pipeline;
 using NaturalGasPipeline.Correlations;
@@ -110,7 +111,7 @@ public sealed class FlowEquationSegmentModel : ISegmentModel
 
     public FlowEquationSegmentModel(IGasFlowEquation equation, FlowEquationGas gas, StandardFlowConditions baseConditions)
     {
-        ArgumentNullException.ThrowIfNull(equation);
+        Guard.NotNull(equation);
         _solver = new GasFlowEquationSolver(equation, gas, baseConditions);
         _gas = gas;
         _base = baseConditions;
