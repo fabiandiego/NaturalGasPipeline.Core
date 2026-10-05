@@ -464,6 +464,16 @@ public class StationPlannerTests
         Assert.Contains(evaluated.Warnings, w => w.Contains("below the minimum suction"));
     }
 
+    [Fact]
+    public void Criteria_Create_ShouldMatchObjectInitializer()
+    {
+        // The factory exists for C# 9 callers (Unity), which cannot use the initializer.
+        StationPlanningCriteria c = StationPlanningCriteria.Create(Pressure.FromMegapascals(7), Pressure.FromMegapascals(5));
+
+        Assert.Equal(Criteria(7.0, 5.0), c);
+        Assert.Equal(1.0, c.MaximumStepLength.Kilometers, 12);
+    }
+
     // ------------------------------------------------------------ concept case (front-end mock-up data)
 
     /// <summary>

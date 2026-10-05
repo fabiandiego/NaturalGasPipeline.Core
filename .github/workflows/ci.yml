@@ -46,3 +46,34 @@ jobs:
           for body in parts[:10]:
               print('::notice title=StationPlannerTests::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
+
+  unity-plugins:
+    # Publishes the netstandard2.1 engine DLLs (what Unity 6 loads) to the
+    # branch "unity-plugins", from which the Unity project takes them.
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build for Unity (netstandard2.1)
+        run: |
+          dotnet publish src/NaturalGasPipeline.Network/NaturalGasPipeline.Network.csproj -c Release -f netstandard2.1 -o "$RUNNER_TEMP/pub"
+          mkdir -p "$RUNNER_TEMP/plugins"
+          cp "$RUNNER_TEMP"/pub/*.dll "$RUNNER_TEMP"/pub/*.xml "$RUNNER_TEMP/plugins/"
+          echo "source: ${GITHUB_REF_NAME}@${GITHUB_SHA}" > "$RUNNER_TEMP/plugins/SOURCE.txt"
+          ls -l "$RUNNER_TEMP/plugins"
+      - name: Push to branch unity-plugins
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan unity-plugins-build
+          git clean -fdx -q
+          cp "$RUNNER_TEMP"/plugins/* .
+          git add -A
+          git commit -q -m "Unity plugins from ${GITHUB_REF_NAME}@${GITHUB_SHA}"
+          git push -f origin HEAD:refs/heads/unity-plugins
