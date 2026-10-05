@@ -463,4 +463,127 @@ public class StationPlannerTests
         Assert.Equal(suction, evaluated.Stations[0].SuctionPressure.Pascals, 1.0);
         Assert.Contains(evaluated.Warnings, w => w.Contains("below the minimum suction"));
     }
+
+    // ------------------------------------------------------------ concept case (front-end mock-up data)
+
+    /// <summary>
+    /// The case shown in the front-end concept: the Fluid tab's gas
+    /// (Kay pseudo-criticals, Wichert-Aziz, DAK, Lee-Gonzalez-Eakin), the
+    /// 600 km terrain route, 28 MMm³/d, 7 → 5 MPa. Prints every number the
+    /// concept screens display, and checks them against each other.
+    /// </summary>
+    [Fact]
+    public void TerrainRoute_ConceptCase_Report()
+    {
+        static GasComponent With(GasComponent c, double y)
+        {
+            c.MoleFraction = y;
+            return c;
+        }
+
+        var gas = new GasMixture
+        {
+            Components =
+            {
+                With(StandardGasComponents.Methane, 0.900),
+                With(StandardGasComponents.Ethane, 0.050),
+                With(StandardGasComponents.Propane, 0.020),
+                With(StandardGasComponents.IsoButane, 0.003),
+                With(StandardGasComponents.NormalButane, 0.005),
+                With(StandardGasComponents.Nitrogen, 0.012),
+                With(StandardGasComponents.CarbonDioxide, 0.010)
+            }
+        };
+        gas.ValidateComposition();
+
+        MolarMass molarMass = gas.CalculateMolarMass();
+        PseudoCriticalProperties kay = PseudoCriticalProperties.FromKay(gas);
+        PseudoCriticalProperties corrected = WichertAzizCorrection.Apply(kay, 0.010, 0.0);
+        CorrespondingStatesCompressibilityModel z = CompressibilityModelFactory.Create(CorrespondingStatesModelType.DranchukAbouKassem, corrected);
+        var viscosity = new LeeGonzalezEakinViscosityModel();
+        var t = Temperature.FromDegreesCelsius(15.0);
+
+        double Rho(double pa) => pa * molarMass.KilogramsPerMole / (z.Calculate(Pressure.FromPascals(pa), t) * R * t.Kelvins);
+
+        var pStd = Pressure.FromKilopascals(101.325);
+        double zStd = z.Calculate(pStd, t);
+
+        _output.WriteLine("FLUID");
+        _output.WriteLine($"  M {molarMass.GramsPerMole:F3} g/mol, SG (ISO 6976 air) {SpecificGravity.OfMixture(gas, DryAirMolarMass.Iso6976_2016):F4}");
+        _output.WriteLine($"  Kay Tpc {kay.Temperature.Kelvins:F2} K, Ppc {kay.Pressure.Megapascals:F4} MPa; Wichert-Aziz Tpc {corrected.Temperature.Kelvins:F2} K, Ppc {corrected.Pressure.Megapascals:F4} MPa");
+        _output.WriteLine($"  Z_std {zStd:F5} (DAK in range at standard conditions: {z.IsWithinValidatedRange(pStd, t)}), rho_std {Rho(pStd.Pascals):F4} kg/m3");
+        _output.WriteLine($"  at 7 MPa, 15 C: Tpr {corrected.ReducedTemperature(t):F3}, Ppr {corrected.ReducedPressure(Pressure.FromMegapascals(7)):F3}, Z {z.Calculate(Pressure.FromMegapascals(7), t):F4}, rho {Rho(7e6):F2} kg/m3");
+        _output.WriteLine("  Z curve (MPa: Z): " + string.Join("  ", new[] { 1.0, 2, 3, 4, 5, 6, 7, 8, 9, 10 }
+            .Select(p => $"{p:F0}:{z.Calculate(Pressure.FromMegapascals(p), t):F4}")));
+
+        var model = new IsothermalSegmentModel(molarMass, z, viscosity);
+        var planner = new CompressorStationPlanner(model, t, molarMass, z, 1.28);
+
+        double[] elevations = { 420, 510, 600, 690, 650, 760, 800, 700, 620, 540, 580, 450, 380 };
+        ProfilePoint[] route = elevations
+            .Select((e, i) => new ProfilePoint(Length.FromKilometers(50.0 * i), Length.FromMeters(e)))
+            .ToArray();
+
+        var standard = new StandardFlowConditions { Temperature = t, Pressure = pStd, CompressibilityFactor = zStd };
+        var q = new StandardVolumetricFlow(VolumeFlow.FromCubicMetersPerSecond(28.0e6 / 86400.0), standard);
+        StationPlanningProblem problem = planner.ProblemFor(route, Length.FromMeters(D), Roughness, q, Criteria(7.0, 5.0));
+
+        StationCountComparison table = planner.CompareStationCounts(problem, additionalStations: 3);
+        _output.WriteLine("");
+        _output.WriteLine("CASE");
+        Print(table.MaximumSpacing);
+
+        foreach (StationCountOption o in table.Options.Where(o => o.Feasible))
+        {
+            StationPlan op = o.Plan!;
+            _output.WriteLine($"  OPTION N {o.StationCount}: ratio {o.PressureRatio:F4}, spacing {op.Stations.Min(s => s.DistanceFromPrevious.Kilometers):F1}-{op.Stations.Max(s => s.DistanceFromPrevious.Kilometers):F1} km, total {(double)o.TotalIsentropicPower.Megawatts:F3} MW");
+        }
+
+        StationPlan chosen = table.Options[0].Plan!;
+        Print(chosen);
+
+        // Pressure profile: section ends and every 10 km.
+        var profile = new List<string>();
+
+        foreach (PipelineSection sec in chosen.Sections)
+        {
+            double x = sec.StartChainage.Meters;
+            profile.Add($"{x / 1e3:F1}:{sec.InletPressure.Megapascals:F3}");
+
+            for (int k = 0; k < sec.Segments.Count; k++)
+            {
+                SegmentResult r = sec.Segments[k];
+                x += r.Segment.Length.Meters;
+
+                if (System.Math.Abs(x / 10e3 - System.Math.Round(x / 10e3)) < 1e-6 || k == sec.Segments.Count - 1)
+                {
+                    profile.Add($"{x / 1e3:F1}:{r.OutletPressure.Megapascals:F3}");
+                }
+            }
+        }
+
+        _output.WriteLine("  PROFILE " + string.Join(" ", profile));
+
+        // Fluid state in the middle of section CS-2 → CS-3.
+        PipelineSection mid = chosen.Sections[2];
+        int half = mid.Segments.Count / 2;
+        double xm = mid.StartChainage.Meters + mid.Segments.Take(half).Sum(s => s.Segment.Length.Meters);
+        double pm = mid.Segments[half].InletPressure.Pascals;
+        double area = System.Math.PI * D * D / 4.0;
+        _output.WriteLine($"  STATE {mid.Name} km {xm / 1e3:F1}: P {pm / 1e6:F3} MPa, rho {Rho(pm):F2} kg/m3, " +
+                          $"v {chosen.MassFlow.KilogramsPerSecond / (Rho(pm) * area):F2} m/s, Z {z.Calculate(Pressure.FromPascals(pm), t):F4}");
+        _output.WriteLine($"  ACTUAL FLOW at A: {chosen.MassFlow.KilogramsPerSecond / Rho(7e6):F3} m3/s, mass {chosen.MassFlow.KilogramsPerSecond:F2} kg/s");
+
+        // Hardware preview: a real stage at station 3.
+        PlannedStation cs3 = chosen.Stations[2];
+        var real = new CompressorStage(molarMass, z, 1.28, CompressionEfficiencyBasis.Isentropic, 0.80, 0.98);
+        CompressionResult c = real.Compress(cs3.SuctionPressure, t, cs3.DischargePressure, chosen.MassFlow);
+        _output.WriteLine($"  HARDWARE {cs3.Name}: {cs3.SuctionPressure.Megapascals:F4} -> {cs3.DischargePressure.Megapascals:F4} MPa, T2 {c.DischargeTemperature.DegreesCelsius:F1} C, " +
+                          $"head {c.Head.KilojoulesPerKilogram:F2} kJ/kg, gas {(double)c.GasPower.Megawatts:F3} MW, shaft {(double)c.ShaftPower.Megawatts:F3} MW, " +
+                          $"Z1 {c.SuctionCompressibilityFactor:F4}, Z2 {c.DischargeCompressibilityFactor:F4}");
+
+        Assert.Equal(5.0e6, chosen.DeliveryPressure.Pascals, 5.0);
+        Assert.True((double)c.ShaftPower.Watts > (double)cs3.IsentropicPower.Watts);
+        Assert.Equal(1.0, gas.TotalMoleFraction(), 12);
+    }
 }
