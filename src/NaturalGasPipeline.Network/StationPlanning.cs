@@ -48,8 +48,11 @@ public sealed record StationPlanningCriteria
 
 /// <summary>
 /// Answers "how many compressor stations, and how far apart?" for a route
-/// with a real elevation profile, by the classical marching method (e.g.
-/// Menon, Gas Pipeline Hydraulics, ch. 7):
+/// with a real elevation profile, by greedy hydraulic marching (maximum
+/// spacing: each station is placed as far downstream as the minimum suction
+/// pressure allows, which gives the minimum number of stations for the
+/// given pressure limits). It does not minimise power or cost; see
+/// Edgar, Himmelblau &amp; Bickel (SPE J., 1978) for the cost-optimal problem.
 ///
 /// 1. start at A with the inlet pressure;
 /// 2. march along the route until the pressure falls to the minimum suction
