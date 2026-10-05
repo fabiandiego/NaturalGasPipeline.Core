@@ -79,8 +79,24 @@ public class StationPlannerTests
         MinimumSuctionPressure = pMin is double v ? Pressure.FromMegapascals(v) : null
     };
 
+    private static StationPlanningProblem Problem(ProfilePoint[] route, StationPlanningCriteria criteria) => new()
+    {
+        Route = route,
+        InternalDiameter = Length.FromMeters(D),
+        AbsoluteRoughness = Roughness,
+        MassFlow = Flow,
+        Criteria = criteria
+    };
+
+    private static StationPlan Greedy(ProfilePoint[] route, StationPlanningCriteria criteria) =>
+        AnalyticPlanner().Plan(Problem(route, criteria), new MaximumSpacingPlacement());
+
+    private static StationPlan EqualRatio(ProfilePoint[] route, StationPlanningCriteria criteria, int n) =>
+        AnalyticPlanner().Plan(Problem(route, criteria), new EqualRatioPlacement(n));
+
     private void Print(StationPlan plan)
     {
+        _output.WriteLine($"[{plan.Method}]");
         _output.WriteLine($"ṁ = {plan.MassFlow.KilogramsPerSecond:F2} kg/s, route {plan.RouteLength.Kilometers:F3} km, " +
                           $"delivery {plan.DeliveryPressure.Megapascals:F6} MPa (target {plan.DeliveryPressureTarget.Megapascals:F3})");
 
@@ -153,7 +169,7 @@ public class StationPlannerTests
         double spacing = (pd * pd - pmin * pmin) / K;
         double length = 3.4 * spacing;
 
-        StationPlan plan = AnalyticPlanner().Plan(Straight(length, 0.0), Length.FromMeters(D), Roughness, Flow, Criteria(7.0, 5.0));
+        StationPlan plan = Greedy(Straight(length, 0.0), Criteria(7.0, 5.0));
         Print(plan);
         _output.WriteLine($"analytic spacing {spacing / 1e3:F4} km");
 
@@ -190,7 +206,7 @@ public class StationPlannerTests
         double reference = BrentRootSolver.FindRoot(Residual, 1.0, length, 1e-6);
         double flat = (pd * pd - pmin * pmin) / K;
 
-        StationPlan plan = AnalyticPlanner().Plan(Straight(length, rise), Length.FromMeters(D), Roughness, Flow, Criteria(7.0, 5.0));
+        StationPlan plan = Greedy(Straight(length, rise), Criteria(7.0, 5.0));
         Print(plan);
         _output.WriteLine($"analytic first spacing uphill {reference / 1e3:F4} km (flat {flat / 1e3:F4} km)");
 
@@ -213,7 +229,7 @@ public class StationPlannerTests
         double l5 = (pd * pd - pb * pb) / K;
         double length = l4 + 0.5 * (l4 + l5);
 
-        StationPlan plan = AnalyticPlanner().Plan(Straight(length, 0.0), Length.FromMeters(D), Roughness, Flow, Criteria(7.0, 5.0, pMin: 4.0));
+        StationPlan plan = Greedy(Straight(length, 0.0), Criteria(7.0, 5.0, pMin: 4.0));
         Print(plan);
 
         Assert.Equal(2, plan.Stations.Count);
@@ -229,7 +245,7 @@ public class StationPlannerTests
     [Fact]
     public void ShortRoute_ShouldNeedNoCompression()
     {
-        StationPlan plan = AnalyticPlanner().Plan(Straight(50e3, 0.0), Length.FromMeters(D), Roughness, Flow, Criteria(7.0, 5.0));
+        StationPlan plan = Greedy(Straight(50e3, 0.0), Criteria(7.0, 5.0));
         Print(plan);
 
         double arrival = System.Math.Sqrt(49e12 - K * 50e3);
@@ -249,7 +265,7 @@ public class StationPlannerTests
         };
 
         Assert.Throws<ArgumentException>(() =>
-            AnalyticPlanner().Plan(Straight(400e3, 0.0), Length.FromMeters(D), Roughness, Flow, criteria));
+            Greedy(Straight(400e3, 0.0), criteria));
     }
 
     // ------------------------------------------------------------ realistic route
@@ -278,7 +294,8 @@ public class StationPlannerTests
         };
         var q = new StandardVolumetricFlow(VolumeFlow.FromCubicMetersPerSecond(28.0e6 / 86400.0), standard);
 
-        StationPlan plan = planner.Plan(route, Length.FromMeters(D), Roughness, q, Criteria(7.0, 5.0));
+        StationPlanningProblem problem = planner.ProblemFor(route, Length.FromMeters(D), Roughness, q, Criteria(7.0, 5.0));
+        StationPlan plan = planner.Plan(problem, new MaximumSpacingPlacement());
         _output.WriteLine($"Q_std = 28.0 MMm³/d at 15 °C, 101.325 kPa, Z_std = {standard.CompressibilityFactor:F5}");
         Print(plan);
 
@@ -290,6 +307,40 @@ public class StationPlannerTests
         Assert.All(plan.Stations, s => Assert.True(s.DistanceFromPrevious.Meters > 0.0));
 
         // Rebuild the planned layout as a series system: same delivery pressure.
+        double series = SeriesDelivery(plan, model, molarMass, z);
+        _output.WriteLine($"Series solver delivery: {series / 1e6:F6} MPa");
+        Assert.Equal(plan.DeliveryPressure.Pascals, series, 5.0);
+
+        // Station count against power (method 2), each plan checked the same way.
+        StationCountComparison table = planner.CompareStationCounts(problem, additionalStations: 3);
+        _output.WriteLine("");
+        _output.WriteLine("  N | P_s (MPa) |   ratio | spacing min–max (km) | total P_s (MW) | delivery (MPa)");
+
+        foreach (StationCountOption o in table.Options)
+        {
+            if (!o.Feasible)
+            {
+                _output.WriteLine($"  {o.StationCount} | infeasible: {o.Reason}");
+                continue;
+            }
+
+            StationPlan p = o.Plan!;
+            _output.WriteLine(
+                $"  {o.StationCount} | {p.Stations[0].SuctionPressure.Megapascals,9:F4} | {o.PressureRatio,7:F4} | " +
+                $"{p.Stations.Min(s => s.DistanceFromPrevious.Kilometers),8:F2} – {p.Stations.Max(s => s.DistanceFromPrevious.Kilometers),8:F2} | " +
+                $"{(double)o.TotalIsentropicPower.Megawatts,14:F3} | {p.DeliveryPressure.Megapascals,14:F6}");
+
+            Assert.Equal(5.0e6, p.DeliveryPressure.Pascals, 5.0);
+            Assert.Equal(p.DeliveryPressure.Pascals, SeriesDelivery(p, model, molarMass, z), 5.0);
+            Assert.All(p.Stations, s => Assert.Equal(o.PressureRatio, s.PressureRatio, 1e-6));
+        }
+
+        Assert.Equal(plan.StationCount, table.MinimumStationCount);
+        Assert.True(table.Options[0].Feasible);
+    }
+
+    private static double SeriesDelivery(StationPlan plan, ISegmentModel model, MolarMass molarMass, ICompressibilityModel z)
+    {
         var stage = new CompressorStage(molarMass, z, 1.28, CompressionEfficiencyBasis.Isentropic, 1.0, 1.0);
         var elements = new List<SystemElement>();
 
@@ -305,9 +356,108 @@ public class StationPlannerTests
             }
         }
 
-        SeriesSolution series = new SeriesSystem(elements).SolveForward(Pressure.FromMegapascals(7.0), T, plan.MassFlow);
-        _output.WriteLine($"Series solver delivery: {series.OutletPressure.Megapascals:F6} MPa");
+        return new SeriesSystem(elements).SolveForward(plan.InletPressure, T, plan.MassFlow).OutletPressure.Pascals;
+    }
 
-        Assert.Equal(plan.DeliveryPressure.Pascals, series.OutletPressure.Pascals, 5.0);
+    // ------------------------------------------------------------ method 2, analytic
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(4)]
+    public void EqualRatio_FlatRoute_ShouldSpaceStationsEvenly(int n)
+    {
+        // Flat, P_A = P_d: last station at L − (P_d² − P_B²)/K; the N sections
+        // before it are equal, each of length s = x_last/N, P_s = √(P_d² − K·s).
+        double pd = 7.0e6, pb = 5.0e6;
+        double greedySpacing = (pd * pd - pb * pb) / K;
+        double length = 3.4 * greedySpacing;
+        double xLast = length - (pd * pd - pb * pb) / K;
+        double s = xLast / n;
+        double ps = System.Math.Sqrt(pd * pd - K * s);
+
+        StationPlan plan = EqualRatio(Straight(length, 0.0), Criteria(7.0, 5.0), n);
+        Print(plan);
+        _output.WriteLine($"analytic: spacing {s / 1e3:F4} km, P_s {ps / 1e6:F6} MPa, ratio {pd / ps:F6}");
+
+        Assert.Equal(n, plan.StationCount);
+
+        for (int i = 0; i < n; i++)
+        {
+            Assert.Equal((i + 1) * s, plan.Stations[i].Chainage.Meters, 0.05);
+            Assert.Equal(ps, plan.Stations[i].SuctionPressure.Pascals, 1.0);
+            Assert.Equal(pd / ps, plan.Stations[i].PressureRatio, 1e-6);
+        }
+
+        Assert.Equal(pb, plan.DeliveryPressure.Pascals, 1.0);
+    }
+
+    [Fact]
+    public void EqualRatio_TooFewStations_ShouldBeInfeasible()
+    {
+        double spacing = (49e12 - 25e12) / K;
+
+        Assert.Throws<StationPlacementInfeasibleException>(() =>
+            EqualRatio(Straight(3.4 * spacing, 0.0), Criteria(7.0, 5.0), 2));
+    }
+
+    [Fact]
+    public void CompareStationCounts_MoreStations_ShouldNeedLessPower()
+    {
+        double spacing = (49e12 - 25e12) / K;
+        CompressorStationPlanner planner = AnalyticPlanner();
+
+        StationCountComparison table = planner.CompareStationCounts(Problem(Straight(3.4 * spacing, 0.0), Criteria(7.0, 5.0)), 4);
+
+        _output.WriteLine($"minimum stations (method 1): {table.MinimumStationCount}, total {(double)table.MaximumSpacing.TotalIsentropicPower.Megawatts:F3} MW");
+
+        foreach (StationCountOption o in table.Options)
+        {
+            _output.WriteLine($"  N = {o.StationCount}: ratio {o.PressureRatio:F4}, total isentropic power {(double)o.TotalIsentropicPower.Megawatts:F3} MW");
+        }
+
+        Assert.Equal(3, table.MinimumStationCount);
+        Assert.Equal(new[] { 3, 4, 5, 6, 7 }, table.Options.Select(o => o.StationCount));
+        Assert.All(table.Options, o => Assert.True(o.Feasible));
+
+        for (int i = 1; i < table.Options.Count; i++)
+        {
+            Assert.True(table.Options[i].TotalIsentropicPower < table.Options[i - 1].TotalIsentropicPower);
+        }
+    }
+
+    // ------------------------------------------------------------ layout evaluation (extension point)
+
+    [Fact]
+    public void EvaluateLayout_OfAPlan_ShouldReproduceIt()
+    {
+        double spacing = (49e12 - 25e12) / K;
+        ProfilePoint[] route = Straight(3.4 * spacing, 0.0);
+        StationPlan plan = Greedy(route, Criteria(7.0, 5.0));
+
+        StationPlan evaluated = AnalyticPlanner().EvaluateLayout(
+            Problem(route, Criteria(7.0, 5.0)),
+            plan.Stations.Select(s => new StationSetting(s.Chainage, s.DischargePressure)).ToList());
+
+        Print(evaluated);
+        Assert.Equal(plan.DeliveryPressure.Pascals, evaluated.DeliveryPressure.Pascals, 1.0);
+        Assert.Equal((double)plan.TotalIsentropicPower.Watts, (double)evaluated.TotalIsentropicPower.Watts, 1.0);
+        Assert.Empty(evaluated.Warnings);
+    }
+
+    [Fact]
+    public void EvaluateLayout_StationTooFarDownstream_ShouldWarn()
+    {
+        double spacing = (49e12 - 25e12) / K;
+        ProfilePoint[] route = Straight(1.5 * spacing, 0.0);
+
+        StationPlan evaluated = AnalyticPlanner().EvaluateLayout(
+            Problem(route, Criteria(7.0, 5.0)),
+            new[] { new StationSetting(Length.FromMeters(1.2 * spacing), Pressure.FromMegapascals(7.0)) });
+
+        Print(evaluated);
+
+        double suction = System.Math.Sqrt(49e12 - K * 1.2 * spacing);
+        Assert.Equal(suction, evaluated.Stations[0].SuctionPressure.Pascals, 1.0);
+        Assert.Contains(evaluated.Warnings, w => w.Contains("below the minimum suction"));
     }
 }
