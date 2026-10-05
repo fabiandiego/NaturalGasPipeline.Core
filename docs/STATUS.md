@@ -137,7 +137,7 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 - Map: schematic horizontal scale over real terrain (DEM); lengths and elevations used by the engine come from the DEM.
 - v1 scope: the map and an intermediate section between two standard compressor stations.
 - Unity 6 loads netstandard2.1 DLLs only; CoreCLR is announced for Unity 7.
-- Next UI change: the Architecture tab shows separate **Nodes** and **Segments** tables, plus the station-planning results and the N-vs-power table.
+- Concept updated 2026-10-05: the Architecture tab shows separate **Nodes** and **Segments** tables, the station-planning inputs and results, and the N-vs-power table.
 
 ## 8. Open items and known issues
 
@@ -145,7 +145,7 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 - Machinery library (compressors, drivers, efficiencies, fuel) — question 4.
 - Heating value (ISO 6976) is needed if drivers are gas turbines (previously parked as "PCS").
 - Non-isothermal pipe flow; compressors and regulators inside networks; GasLib validation.
-- `Unity Gas Pipeline Simulator_tester/` is a legacy stub (unimplemented `GeneralFlowEquation`) superseded by the Correlations project; candidate for removal (owner's decision).
+- Removed 2026-10-05 (owner's decision): `Unity Gas Pipeline Simulator_tester/`, a legacy stub superseded by the Correlations project.
 - `NaturalGasPipeline.Mechanics` is empty.
 - CI uses actions targeting Node.js 20 (deprecated; works, update when convenient).
 - `BinaryInteractionDatabase` returns 0 for a misspelt component name; no default kij.
