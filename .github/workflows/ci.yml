@@ -19,3 +19,16 @@ jobs:
         run: dotnet build -c Release --no-restore
       - name: Test
         run: dotnet test -c Release --no-build --logger "console;verbosity=detailed"
+      - name: Station planner report (annotation)
+        if: always()
+        shell: bash
+        run: |
+          dotnet test tests/NaturalGasPipeline.Network.Tests -c Release --no-build \
+            --filter "FullyQualifiedName~StationPlannerTests" \
+            --logger "console;verbosity=detailed" > planner.txt || true
+          python3 - <<'PY'
+          lines = [l.rstrip() for l in open('planner.txt', encoding='utf-8', errors='replace')
+                   if any(k in l for k in ('km', 'MPa', 'ΔP', 'spacing', ' ! ', 'Passed ', 'Failed '))]
+          text = '\n'.join(lines)[:60000]
+          print('::notice title=StationPlannerTests::' + text.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
+          PY
