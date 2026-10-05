@@ -138,6 +138,7 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 - v1 scope: the map and an intermediate section between two standard compressor stations.
 - Unity 6 loads netstandard2.1 DLLs only; CoreCLR is announced for Unity 7.
 - Concept updated 2026-10-05: the Architecture tab shows separate **Nodes** and **Segments** tables, the station-planning inputs and results, and the N-vs-power table.
+- All concept tabs show one engine case, printed by the test `StationPlannerTests.TerrainRoute_ConceptCase_Report`: the Fluid-tab gas (Kay + Wichert-Aziz + DAK), 600 km route, 28.0 MMm³/d (248.23 kg/s), 7 → 5 MPa; method 2 with 5 stations, ratio 1.355, 45.0 MW isentropic (method 1: 47.5 MW). Z at standard conditions is DAK extrapolated below Ppr 0.2 and is flagged as a warning until an ISO 6976 method exists.
 
 ## 8. Open items and known issues
 
