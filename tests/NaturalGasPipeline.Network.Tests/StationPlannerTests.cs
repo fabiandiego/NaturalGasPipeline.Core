@@ -337,6 +337,9 @@ public class StationPlannerTests
 
         Assert.Equal(plan.StationCount, table.MinimumStationCount);
         Assert.True(table.Options[0].Feasible);
+
+        _output.WriteLine("");
+        Print(table.Options[0].Plan!);
     }
 
     private static double SeriesDelivery(StationPlan plan, ISegmentModel model, MolarMass molarMass, ICompressibilityModel z)

@@ -33,8 +33,16 @@ jobs:
           chunks = re.split(r'\n(?=\s+(?:Passed|Failed) )', text)
           chunks = [c for c in chunks if re.match(r'\s+(Passed|Failed) ', c)]
           chunks.sort(key=lambda c: (('Failed' not in c.split('\n')[0]), ('Terrain' not in c and 'Compare' not in c)))
-          for c in chunks[:10]:
+          parts = []
+          for c in chunks:
               lines = [l.rstrip() for l in c.split('\n') if l.strip() and not l.strip().startswith('Standard Output')]
-              body = '\n'.join(lines)[:3900]
+              part = ''
+              for l in lines:
+                  if len(part) + len(l) > 3800:
+                      parts.append(part)
+                      part = ''
+                  part += l + '\n'
+              parts.append(part)
+          for body in parts[:10]:
               print('::notice title=StationPlannerTests::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
