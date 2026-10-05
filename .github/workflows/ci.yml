@@ -27,8 +27,14 @@ jobs:
             --filter "FullyQualifiedName~StationPlannerTests" \
             --logger "console;verbosity=detailed" > planner.txt || true
           python3 - <<'PY'
-          lines = [l.rstrip() for l in open('planner.txt', encoding='utf-8', errors='replace')
-                   if any(k in l for k in ('km', 'MPa', 'ΔP', 'spacing', ' ! ', 'Passed ', 'Failed '))]
-          text = '\n'.join(lines)[:60000]
-          print('::notice title=StationPlannerTests::' + text.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
+          import re
+          text = open('planner.txt', encoding='utf-8', errors='replace').read()
+          # One chunk per test: the "Passed/Failed <name>" line and its output.
+          chunks = re.split(r'\n(?=\s+(?:Passed|Failed) )', text)
+          chunks = [c for c in chunks if re.match(r'\s+(Passed|Failed) ', c)]
+          chunks.sort(key=lambda c: (('Failed' not in c.split('\n')[0]), ('Terrain' not in c and 'Compare' not in c)))
+          for c in chunks[:10]:
+              lines = [l.rstrip() for l in c.split('\n') if l.strip() and not l.strip().startswith('Standard Output')]
+              body = '\n'.join(lines)[:3900]
+              print('::notice title=StationPlannerTests::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
