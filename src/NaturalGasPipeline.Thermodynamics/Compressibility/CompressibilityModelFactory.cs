@@ -40,6 +40,9 @@ public static class CompressibilityModelFactory
             CompressibilityModelType.Papay =>
                 Create(CorrespondingStatesModelType.Papay, PseudoCriticalProperties.FromKay(mixture)),
 
+            CompressibilityModelType.Aga8Detail =>
+                new Aga8DetailModel(mixture),
+
             _ =>
                 throw new ArgumentOutOfRangeException(
                     nameof(modelType),
