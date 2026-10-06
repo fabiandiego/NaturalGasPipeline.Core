@@ -94,6 +94,26 @@ public class NaturalGasZBenchmarkTests
         yield return ("SRK (kij = 0)", g => new SoaveRedlichKwongModel(g));
     }
 
+    /// <summary>
+    /// Measured max |ΔZ/Z| against AGA8 for P ≥ 1 MPa (2026-10-06), rounded up:
+    /// DAK·Kay+WA 1.30, HY·Kay+WA 1.34, Papay 3.78, DAK·Kay 3.59, DAK·Kay+CKB 6.65,
+    /// DAK·Sutton+WA 9.08, DAK·Standing+WA 13.92, PR (kij = 0) 4.16, SRK (kij = 0) 2.84.
+    /// The specific-gravity methods (Sutton, Standing) and CKB fail on the high-inert gas.
+    /// </summary>
+    internal static double Band(string model) => model switch
+    {
+        "DAK · Kay + Wichert-Aziz" => 1.4,
+        "HY · Kay + Wichert-Aziz" => 1.4,
+        "Papay · Kay + Wichert-Aziz" => 3.9,
+        "DAK · Kay, no correction" => 3.7,
+        "DAK · Kay + Carr-Kobayashi-Burrows" => 6.8,
+        "DAK · Sutton + Wichert-Aziz" => 9.2,
+        "DAK · Standing + Wichert-Aziz" => 14.0,
+        "Peng-Robinson (kij = 0)" => 4.3,
+        "SRK (kij = 0)" => 2.9,
+        _ => throw new ArgumentOutOfRangeException(nameof(model))
+    };
+
     [Fact]
     public void AllModels_AgainstAga8_ForNaturalGases_Report()
     {
@@ -148,6 +168,7 @@ public class NaturalGasZBenchmarkTests
             }
 
             worstByModel[modelName] = maxPipe;
+            Assert.True(maxStd < 0.1, $"{modelName}: Z at standard conditions {maxStd:F3} % from AGA8");
             report.AppendLine($"{modelName,-36}| {maxAll,10:F3} | {maxPipe,13:F3} | {sum / n,7:+0.000;-0.000} | {maxStd,15:F4} | {maxInRange,10:F3}");
         }
 
@@ -189,10 +210,12 @@ public class NaturalGasZBenchmarkTests
 
         _output.WriteLine(report.ToString());
 
-        // Loose sanity bound; the measured values are recorded in docs/STATUS.md.
+        // Bands = measured maximum (2026-10-06) rounded up. They record what each option
+        // achieves for natural gas; changing one needs a documented reason.
         foreach (KeyValuePair<string, double> kv in worstByModel)
         {
-            Assert.True(kv.Value < 8.0, $"{kv.Key}: {kv.Value:F2} % from AGA8");
+            double band = Band(kv.Key);
+            Assert.True(kv.Value <= band, $"{kv.Key}: {kv.Value:F2} % from AGA8 (documented band {band} %)");
         }
     }
 

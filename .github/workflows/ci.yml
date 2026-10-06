@@ -52,15 +52,17 @@ jobs:
         shell: bash
         run: |
           dotnet test tests/NaturalGasPipeline.Thermodynamics.Tests -c Release --no-build \
-            --filter "FullyQualifiedName~NaturalGasZBenchmarkTests|FullyQualifiedName~Aga8DetailTests.NistCheckPoint" \
+            --filter "FullyQualifiedName~NaturalGasZBenchmarkTests|FullyQualifiedName~Aga8DetailTests" \
             --logger "console;verbosity=detailed" > zbench.txt || true
           python3 - <<'PY'
           import re
           text = open('zbench.txt', encoding='utf-8', errors='replace').read()
           chunks = re.split(r'\n(?=\s+(?:Passed|Failed) )', text)
           chunks = [c for c in chunks if re.match(r'\s+(Passed|Failed) ', c)]
-          parts = []
-          for c in chunks:
+          keep = [c for c in chunks if 'Failed' in c.split('\n')[0] or 'Benchmark' in c or 'NistCheckPoint' in c]
+          totals = re.findall(r'(Total tests: \d+|Passed: \d+|Failed: \d+)', text)
+          parts = ['Aga8DetailTests + NaturalGasZBenchmarkTests: ' + ', '.join(totals)]
+          for c in keep:
               lines = [l.rstrip() for l in c.split('\n') if l.strip() and not l.strip().startswith('Standard Output')]
               part = ''
               for l in lines:
