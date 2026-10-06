@@ -62,6 +62,29 @@ Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies com
 ## 4. Validation summary
 
 ### Compressibility and fluid properties
+- **AGA8-DC92 DETAIL (ISO 12213-2)** added 2026-10-06 (`Aga8DetailModel`, port of the NIST reference code usnistgov/AGA8):
+  reproduces the NIST check point to 1e-8 and the compiled NIST code to 1e-10 (60 states, 4 gases); pure methane and
+  nitrogen within 0.02 % of the NIST WebBook reference equations. It is the reference for natural gas and the
+  front-end default.
+- **Reliability of every Z option for natural gas** (`NaturalGasZBenchmarkTests`, 2026-10-06): max |ΔZ/Z| against
+  AGA8 for 8 gases (Snam entry points Russia, North Europe, Algeria, Libya; LNG Qatar, Nigeria; concept gas;
+  10 % N2 + 8 % CO2), 273–313 K, 1–10 MPa:
+
+  | Option | max \|ΔZ/Z\| | mean ΔZ/Z | at standard conditions |
+  |---|---|---|---|
+  | DAK · Kay + Wichert-Aziz | 1.30 % | −0.38 % | 0.012 % |
+  | HY · Kay + Wichert-Aziz | 1.34 % | −0.47 % | 0.021 % |
+  | SRK (kij = 0) | 2.84 % | +0.49 % | 0.005 % |
+  | DAK · Kay, no correction | 3.59 % | −0.60 % | 0.023 % |
+  | Papay · Kay + Wichert-Aziz | 3.78 % | −0.33 % | 0.062 % |
+  | Peng-Robinson (kij = 0) | 4.16 % | −1.57 % | 0.061 % |
+  | DAK · Kay + Carr-Kobayashi-Burrows | 6.65 % | +0.24 % | 0.040 % |
+  | DAK · Sutton + Wichert-Aziz | 9.08 % | −0.13 % | 0.060 % |
+  | DAK · Standing + Wichert-Aziz | 13.92 % | −1.19 % | 0.088 % |
+
+  The gravity-only pseudo-critical methods (Sutton, Standing) and CKB fail on the high-inert gas; with the
+  composition known, use AGA8, or DAK/HY with Kay + Wichert-Aziz. Z at standard conditions is within 0.1 % for every
+  option, so the standard-to-mass flow conversion is not the weak point. The bands are asserted by the test.
 - **EOS against NIST WebBook** (methane, nitrogen; 273–313 K; 1–10 MPa): Peng-Robinson underestimates methane Z by up to 2.8 %; SRK within 2.2 %. Neither reaches custody-transfer accuracy (AGA 8 / GERG-2008 ≈ 0.1 %).
 - **Corresponding states against NIST** (pure fluids): methane DAK 1.49 %, HY 1.52 %, Papay 1.40 %; nitrogen DAK 2.42 %, HY 2.03 %, Papay 2.44 % (all underestimate Z).
 - **Academic sources**: ITU PET 509E DAK checkpoints reproduced to 4 decimals; King Saud PGE 362 and Mosul examples (Standing, Wichert-Aziz, Carr-Kobayashi-Burrows, Kay) reproduced; against Standing–Katz chart readings DAK ≤ 1.35 %, HY ≤ 1.84 %, Papay ≤ 3.34 % inside its range.
