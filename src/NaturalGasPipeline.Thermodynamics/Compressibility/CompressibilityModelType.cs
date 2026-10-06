@@ -14,7 +14,10 @@ public enum CompressibilityModelType
     HallYarborough,
 
     /// <summary>Papay with Kay pseudo-criticals of the mixture.</summary>
-    Papay
+    Papay,
+
+    /// <summary>AGA8-DC92 DETAIL equation (ISO 12213-2), the natural-gas reference.</summary>
+    Aga8Detail
 }
 
 /// <summary>Correlations of the generalized Z chart, Z = Z(Tpr, Ppr).</summary>
