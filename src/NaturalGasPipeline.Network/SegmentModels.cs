@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Flow;
 using NaturalGasPipeline.Core.Pipeline;
 using NaturalGasPipeline.Correlations;
@@ -29,7 +30,19 @@ public interface ISegmentModel
     SegmentResult SolveMassFlow(PipeSegment segment, Temperature temperature, Pressure inletPressure, Pressure outletPressure);
 }
 
-/// <summary>State of one solved segment.</summary>
+/// <summary>
+/// State of one solved segment.
+///
+/// The total pressure drop is split into an elevation (hydrostatic) part and
+/// a friction part:
+///   ΔP_elevation = ρ_lm·g·Δz,   ρ_lm = ρ̄·P_lm/P_avg,   P_lm = (P1 − P2)/ln(P1/P2)
+///   ΔP_friction  = ΔP_total − ΔP_elevation
+/// ρ̄ is the density at the solver's average pressure; scaling it to the
+/// log-mean pressure makes the elevation part exact for a static gas column
+/// at constant Z (P2 = P1·e^(−s/2)). The split is a definition for
+/// reporting: the momentum balance itself is integrated as a whole (P² form).
+/// Uphill ΔP_elevation &gt; 0; downhill it is negative (the gas regains pressure).
+/// </summary>
 public sealed record SegmentResult
 {
     public required string Model { get; init; }
@@ -48,9 +61,28 @@ public sealed record SegmentResult
 
     public required double AverageCompressibilityFactor { get; init; }
 
+    /// <summary>Gas density at <see cref="AveragePressure"/> and <see cref="Temperature"/>.</summary>
+    public required Density AverageDensity { get; init; }
+
     public required IReadOnlyList<string> Warnings { get; init; }
 
     public Pressure PressureDrop => InletPressure - OutletPressure;
+
+    /// <summary>ρ_lm·g·Δz (negative downhill).</summary>
+    public Pressure ElevationPressureDrop
+    {
+        get
+        {
+            double p1 = InletPressure.Pascals;
+            double p2 = OutletPressure.Pascals;
+            double logMean = System.Math.Abs(p1 - p2) <= 1e-12 * p1 ? p1 : (p1 - p2) / System.Math.Log(p1 / p2);
+            double density = AverageDensity.KilogramsPerCubicMeter * logMean / AveragePressure.Pascals;
+            return Pressure.FromPascals(density * PhysicalConstants.StandardGravity * Segment.ElevationChange.Meters);
+        }
+    }
+
+    /// <summary>ΔP_total − ΔP_elevation.</summary>
+    public Pressure FrictionPressureDrop => PressureDrop - ElevationPressureDrop;
 }
 
 /// <summary>
@@ -93,6 +125,7 @@ public sealed class IsothermalSegmentModel : ISegmentModel
         MassFlow = s.MassFlow,
         AveragePressure = s.AveragePressure,
         AverageCompressibilityFactor = s.AverageCompressibilityFactor,
+        AverageDensity = s.AverageDensity,
         Warnings = s.Warnings
     };
 }
@@ -110,7 +143,7 @@ public sealed class FlowEquationSegmentModel : ISegmentModel
 
     public FlowEquationSegmentModel(IGasFlowEquation equation, FlowEquationGas gas, StandardFlowConditions baseConditions)
     {
-        ArgumentNullException.ThrowIfNull(equation);
+        Guard.NotNull(equation);
         _solver = new GasFlowEquationSolver(equation, gas, baseConditions);
         _gas = gas;
         _base = baseConditions;
@@ -141,6 +174,9 @@ public sealed class FlowEquationSegmentModel : ISegmentModel
         MassFlow = s.MassFlow,
         AveragePressure = s.AveragePressure,
         AverageCompressibilityFactor = s.AverageCompressibilityFactor,
+        AverageDensity = Density.FromKilogramsPerCubicMeter(
+            s.AveragePressure.Pascals * _gas.MolarMass.KilogramsPerMole
+            / (s.AverageCompressibilityFactor * PhysicalConstants.MolarGasConstant * s.FlowingTemperature.Kelvins)),
         Warnings = s.Warnings
     };
 }

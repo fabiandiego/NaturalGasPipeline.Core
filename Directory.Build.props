@@ -1,11 +1,13 @@
 <Project>
   <!--
     Shared settings for every project under this folder.
-    A project can still override any of them in its own .csproj
-    (e.g. a future netstandard2.1 target for Unity).
+    A project can still override any of them in its own .csproj.
+    Target frameworks are set per folder: src/Directory.Build.props
+    (netstandard2.1 for Unity + net8.0) and tests/Directory.Build.props (net8.0).
   -->
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- C# 12 on every target; netstandard2.1 would otherwise default to C# 8. -->
+    <LangVersion>12.0</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

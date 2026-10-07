@@ -1,0 +1,18 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <!--
+    Engine libraries: netstandard2.1 is what Unity 6 (Mono, C# 9) can load;
+    net8.0 is used by the tests and by .NET applications.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="PolySharp">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

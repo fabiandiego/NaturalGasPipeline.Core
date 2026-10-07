@@ -16,19 +16,8 @@ public class GasComponent
 
     public double AcentricFactor { get; set; }
 }
-/*la densidad del gas .
-
-Para un gas real:
-
-$$ \rho = \frac{P\,M}{ZRT} $$
-
-donde:
-
-\(P\)= presión
-\(M\)= masa molar
-\(Z\)= factor de compresibilidad
-\(R\)= constante universal de los gases
-\(T\)= temperatura
-
-*/
+// Gas density (real gas), as computed by GasState:
+//   ρ = P·M / (Z·R·T)
+// P pressure, M molar mass, Z compressibility factor,
+// R universal gas constant, T absolute temperature.
 

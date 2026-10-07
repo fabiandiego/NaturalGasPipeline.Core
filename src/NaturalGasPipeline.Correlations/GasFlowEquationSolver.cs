@@ -42,7 +42,7 @@ public sealed class GasFlowEquationSolver
     {
         _equation = equation ?? throw new ArgumentNullException(nameof(equation));
         _gas = gas ?? throw new ArgumentNullException(nameof(gas));
-        ArgumentNullException.ThrowIfNull(baseConditions);
+        Guard.NotNull(baseConditions);
         baseConditions.Validate();
 
         if (!double.IsFinite(relativeTolerance) || relativeTolerance <= 0.0)
@@ -63,7 +63,7 @@ public sealed class GasFlowEquationSolver
     /// <summary>Q from P1, P2 and the pipe.</summary>
     public FlowEquationSolution SolveFlow(PipeSegment segment, Temperature temperature, Pressure inletPressure, Pressure outletPressure)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p1 = RequirePressure(inletPressure, nameof(inletPressure));
         double p2 = RequirePressure(outletPressure, nameof(outletPressure));
@@ -86,7 +86,7 @@ public sealed class GasFlowEquationSolver
     /// <summary>P2 from P1, Q and the pipe.</summary>
     public FlowEquationSolution SolveOutletPressure(PipeSegment segment, Temperature temperature, Pressure inletPressure, StandardVolumetricFlow standardFlow)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p1 = RequirePressure(inletPressure, nameof(inletPressure));
         VolumeFlow q = ToBaseConditions(standardFlow);
@@ -124,7 +124,7 @@ public sealed class GasFlowEquationSolver
     /// <summary>P1 from P2, Q and the pipe.</summary>
     public FlowEquationSolution SolveInletPressure(PipeSegment segment, Temperature temperature, Pressure outletPressure, StandardVolumetricFlow standardFlow)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p2 = RequirePressure(outletPressure, nameof(outletPressure));
         VolumeFlow q = ToBaseConditions(standardFlow);
@@ -297,7 +297,7 @@ public sealed class GasFlowEquationSolver
 
     private VolumeFlow ToBaseConditions(StandardVolumetricFlow standardFlow)
     {
-        ArgumentNullException.ThrowIfNull(standardFlow);
+        Guard.NotNull(standardFlow);
 
         double q = standardFlow.Value.CubicMetersPerSecond;
 

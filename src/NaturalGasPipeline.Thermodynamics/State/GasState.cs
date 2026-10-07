@@ -1,4 +1,4 @@
-﻿using UnitsNet;
+using UnitsNet;
 using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Gas;
 
@@ -50,7 +50,7 @@ public class GasState
     public void CalculateCompressibility(
         ICompressibilityModel model)
     {
-        ArgumentNullException.ThrowIfNull(model);
+        Guard.NotNull(model);
 
         ValidatePressureAndTemperature();
 
@@ -118,7 +118,7 @@ public class GasState
     public void CalculateViscosity(
         IViscosityModel model)
     {
-        ArgumentNullException.ThrowIfNull(model);
+        Guard.NotNull(model);
 
         if (Density.KilogramsPerCubicMeter <= 0.0)
         {
@@ -145,7 +145,7 @@ public class GasState
     public void CalculateState(
         ICompressibilityModel model)
     {
-        ArgumentNullException.ThrowIfNull(model);
+        Guard.NotNull(model);
 
         GasMixture mixture = RequireMixture();
 

@@ -63,8 +63,8 @@ public sealed class IsothermalGasFlowSolver
         double relativeTolerance = 1e-10,
         int maxIterations = 200)
     {
-        ArgumentNullException.ThrowIfNull(compressibilityModel);
-        ArgumentNullException.ThrowIfNull(viscosityModel);
+        Guard.NotNull(compressibilityModel);
+        Guard.NotNull(viscosityModel);
 
         double m = molarMass.KilogramsPerMole;
 
@@ -104,7 +104,7 @@ public sealed class IsothermalGasFlowSolver
         IFrictionFactorModel? frictionModel = null,
         BinaryInteractionDatabase? interactionDatabase = null)
     {
-        ArgumentNullException.ThrowIfNull(mixture);
+        Guard.NotNull(mixture);
 
         mixture.ValidateComposition();
 
@@ -122,7 +122,7 @@ public sealed class IsothermalGasFlowSolver
         Pressure inletPressure,
         MassFlow massFlow)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p1 = RequirePressure(inletPressure, nameof(inletPressure));
         double m = RequireMassFlow(massFlow);
@@ -163,7 +163,7 @@ public sealed class IsothermalGasFlowSolver
         Pressure outletPressure,
         MassFlow massFlow)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p2 = RequirePressure(outletPressure, nameof(outletPressure));
         double m = RequireMassFlow(massFlow);
@@ -197,7 +197,7 @@ public sealed class IsothermalGasFlowSolver
         Pressure inletPressure,
         Pressure outletPressure)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
         double t = RequireTemperature(temperature);
         double p1 = RequirePressure(inletPressure, nameof(inletPressure));
         double p2 = RequirePressure(outletPressure, nameof(outletPressure));

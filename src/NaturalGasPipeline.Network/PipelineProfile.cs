@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Pipeline;
 using UnitsNet;
 
@@ -22,7 +23,7 @@ public static class PipelineProfile
         Length internalDiameter,
         Length absoluteRoughness)
     {
-        ArgumentNullException.ThrowIfNull(points);
+        Guard.NotNull(points);
 
         if (points.Count < 2)
         {
@@ -56,7 +57,7 @@ public static class PipelineProfile
     /// <summary>Splits a segment into N equal parts with the same slope.</summary>
     public static IReadOnlyList<PipeSegment> Subdivide(PipeSegment segment, int parts)
     {
-        ArgumentNullException.ThrowIfNull(segment);
+        Guard.NotNull(segment);
 
         if (parts < 1)
         {

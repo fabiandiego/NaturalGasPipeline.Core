@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using UnitsNet;
 
 namespace NaturalGasPipeline.Thermodynamics;
@@ -121,12 +122,12 @@ public sealed class StandingPseudoCriticalCorrelation : QuadraticPseudoCriticalC
         StandingGasSystem gasSystem,
         StandingCoefficientSet coefficientSet)
     {
-        if (!Enum.IsDefined(gasSystem))
+        if (!Guard.IsDefined(gasSystem))
         {
             throw new ArgumentOutOfRangeException(nameof(gasSystem), gasSystem, "Unknown gas system.");
         }
 
-        if (!Enum.IsDefined(coefficientSet))
+        if (!Guard.IsDefined(coefficientSet))
         {
             throw new ArgumentOutOfRangeException(nameof(coefficientSet), coefficientSet, "Unknown coefficient set.");
         }
@@ -173,7 +174,7 @@ public static class WichertAzizCorrection
         double carbonDioxideMoleFraction,
         double hydrogenSulfideMoleFraction)
     {
-        ArgumentNullException.ThrowIfNull(uncorrected);
+        Guard.NotNull(uncorrected);
         ValidateFraction(carbonDioxideMoleFraction, nameof(carbonDioxideMoleFraction));
         ValidateFraction(hydrogenSulfideMoleFraction, nameof(hydrogenSulfideMoleFraction));
 
@@ -231,7 +232,7 @@ public static class CarrKobayashiBurrowsCorrection
         double hydrogenSulfideMoleFraction,
         double nitrogenMoleFraction)
     {
-        ArgumentNullException.ThrowIfNull(uncorrected);
+        Guard.NotNull(uncorrected);
         ValidateFraction(carbonDioxideMoleFraction, nameof(carbonDioxideMoleFraction));
         ValidateFraction(hydrogenSulfideMoleFraction, nameof(hydrogenSulfideMoleFraction));
         ValidateFraction(nitrogenMoleFraction, nameof(nitrogenMoleFraction));

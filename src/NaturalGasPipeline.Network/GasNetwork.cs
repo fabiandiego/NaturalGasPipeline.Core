@@ -1,3 +1,4 @@
+using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Pipeline;
 using UnitsNet;
 
@@ -80,8 +81,8 @@ public sealed class GasNetwork
 {
     public GasNetwork(IEnumerable<NetworkNode> nodes, IEnumerable<NetworkPipe> pipes)
     {
-        ArgumentNullException.ThrowIfNull(nodes);
-        ArgumentNullException.ThrowIfNull(pipes);
+        Guard.NotNull(nodes);
+        Guard.NotNull(pipes);
 
         Nodes = nodes.ToList();
         Pipes = pipes.ToList();
@@ -110,8 +111,8 @@ public sealed class GasNetwork
                 throw new ArgumentException($"Pipe '{p.Id}' must join two different existing nodes.", nameof(pipes));
             }
 
-            ArgumentNullException.ThrowIfNull(p.Segment);
-            ArgumentNullException.ThrowIfNull(p.Model);
+            Guard.NotNull(p.Segment);
+            Guard.NotNull(p.Model);
         }
 
         if (!Nodes.Any(n => n.Kind == NodeKind.FixedPressure))
