@@ -37,7 +37,8 @@ src/
                       Carr-Kobayashi-Burrows corrections (CO₂, H₂S, N₂)
     State/           GasState
     Compressibility/ ICompressibilityModel: ideal, constant Z, Peng-Robinson, SRK,
-                     corresponding states (DAK, Hall-Yarborough, Papay), CNGA
+                     corresponding states (DAK, Hall-Yarborough, Papay), CNGA,
+                     AGA8-DC92 DETAIL (ISO 12213-2; port of the NIST reference code)
     Viscosity/       IViscosityModel: Lee-Gonzalez-Eakin, constant
   NaturalGasPipeline.Hydraulics      → Core, Thermodynamics
     Friction/    IFrictionFactorModel: Colebrook-White, Haaland, Swamee-Jain, Churchill,
@@ -99,6 +100,7 @@ scripts/build-unity-plugins.sh       (Linux)
 ```
 
 The output goes to `artifacts/UnityPlugins`; copy it to `Assets/_Project/Plugins/Engine` in the Unity project.
+CI also publishes the same DLLs to the orphan branch `unity-plugins` on every push; its `SOURCE.txt` names the branch and commit they were built from.
 netstandard2.1 lacks some .NET 8 APIs: use `Guard.NotNull` and `Guard.IsDefined` (Core.Common) instead of `ArgumentNullException.ThrowIfNull` and `Enum.IsDefined<T>`; the compiler attributes behind `init` and `required` come from PolySharp.
 
 ## Build and test

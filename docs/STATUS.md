@@ -1,8 +1,9 @@
 # NaturalGasPipeline — Project status
 
-**Version 2.0 — 2026-10-05.** Supersedes the Spanish "Diagnóstico del motor" (v1, 2026-10-04).
-Repository: `fabiandiego/NaturalGasPipeline.Core`, branch `claude/ubicacion-estaciones` (contains all earlier branches).
+**Version 2.1 — 2026-10-15.** Version 2.0 (2026-10-05) superseded the Spanish "Diagnóstico del motor" (v1, 2026-10-04).
+Repository: `fabiandiego/NaturalGasPipeline.Core`, branch `master`. All earlier work branches were merged (PR #1, 2026-10-07) and deleted.
 Build and tests: GitHub Actions on every push (netstandard2.1 + net8.0, all tests), and Visual Studio 2022 on the owner's machine (344 tests passed on 2026-10-05, before the station-planning work).
+Unity DLLs: the CI job `unity-plugins` publishes the netstandard2.1 build to the orphan branch `unity-plugins`; the Unity project copies them to `Assets/_Project/Plugins/Engine/`, where `SOURCE.txt` records the engine commit.
 
 ---
 
@@ -50,7 +51,7 @@ Core ← Thermodynamics ← Hydraulics ← Correlations ← Network
 | Project | Content |
 |---|---|
 | Core | PhysicalConstants, Guard, flow types and conversions, Brent, cubic and dense linear solvers, Pipe / PipeSegment |
-| Thermodynamics | Components, mixtures, characterisation (Kay, Sutton, Standing; Wichert-Aziz, Carr-Kobayashi-Burrows), Z (ideal, constant, PR, SRK, DAK, Hall-Yarborough, Papay, CNGA), viscosity (Lee-Gonzalez-Eakin, constant) |
+| Thermodynamics | Components, mixtures, characterisation (Kay, Sutton, Standing; Wichert-Aziz, Carr-Kobayashi-Burrows), Z (ideal, constant, PR, SRK, DAK, Hall-Yarborough, Papay, CNGA, AGA8-DC92 DETAIL), viscosity (Lee-Gonzalez-Eakin, constant) |
 | Hydraulics | Friction (Colebrook-White, Haaland, Swamee-Jain, Churchill, AGA fully turbulent, AGA with drag factor, constant f / F), isothermal compressible segment solver |
 | Correlations | Weymouth, Panhandle A/B, General Flow / AGA; solves Q, P1, P2 or D |
 | Compression | Isentropic / polytropic stage, multi-stage station with intercooling |
@@ -155,6 +156,8 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 
 ## 7. Front end (Unity, separate repository)
 
+- Repository `fabiandiego/NaturalGasPipeline.Unity`, branch `main`: Unity 6000.3.10f1, UI Toolkit, C# 9; user manual in `docs/manual/` (PDF built by CI to branch `manual-pdf`).
+- Implemented tabs, in workflow order: Fluid Definition → Pipeline Architecture Drafter → Hardware Drafter → Network Map 3D. The Fluid tab offers AGA8-DC92 DETAIL (default for pipeline gas) and a library of 17 published gas compositions.
 - Concept screens (artifact): tabs in workflow order — Fluid Definition → Pipeline Architecture Drafter → Hardware Drafter → Network Map 3D.
 - Default language English; Russian, Spanish, Arabic and Persian postponed (Arabic and Persian need right-to-left layout and glyph shaping).
 - Map: schematic horizontal scale over real terrain (DEM); lengths and elevations used by the engine come from the DEM.
@@ -172,6 +175,7 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 - Removed 2026-10-05 (owner's decision): `Unity Gas Pipeline Simulator_tester/`, a legacy stub superseded by the Correlations project.
 - `NaturalGasPipeline.Mechanics` is empty.
 - CI uses actions targeting Node.js 20 (deprecated; works, update when convenient).
+- CI runs on pushes to every branch, and the `unity-plugins` job republishes the DLLs from whichever branch was pushed last. Until the job is limited to `master`, the DLLs on `unity-plugins` may come from a work branch; check `SOURCE.txt` before copying them into Unity.
 - `BinaryInteractionDatabase` returns 0 for a misspelt component name; no default kij.
 
 ## 9. Sources that could not be accessed (to be supplied manually)
