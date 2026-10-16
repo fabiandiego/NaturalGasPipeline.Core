@@ -254,6 +254,54 @@ public class StationPlannerTests
         Assert.Contains(plan.Warnings, w => w.StartsWith("No compression needed"));
     }
 
+    // ------------------------------------------------------------ MAOP check (Mechanics, pending review)
+
+    [Fact]
+    public void Maop_BelowStationDischarge_ShouldWarnOnEverySectionAboveIt()
+    {
+        double pd = 7.0e6, pmin = 5.0e6;
+        double spacing = (pd * pd - pmin * pmin) / K;
+        StationPlanningCriteria criteria = Criteria(7.0, 5.0) with { MaximumAllowableOperatingPressure = Pressure.FromMegapascals(6.9) };
+
+        StationPlan plan = Greedy(Straight(3.4 * spacing, 0.0), criteria);
+        Print(plan);
+
+        // A, CS-1 and CS-2 discharge 7.0 MPa; CS-3 only needs
+        // √(5² + 0.4·(7² − 5²)) = 5.88 MPa to reach B, below the MAOP.
+        string[] maop = plan.Warnings.Where(w => w.Contains("MAOP")).ToArray();
+        Assert.Equal(3, maop.Length);
+        Assert.Contains(maop, w => w.StartsWith("A → CS-1"));
+        Assert.DoesNotContain(maop, w => w.StartsWith("CS-3 → B"));
+    }
+
+    [Fact]
+    public void Maop_PressureRegainedDownhill_ShouldWarnAtTheLowPoint()
+    {
+        // 20 km falling 2000 m: hydrostatic gain exceeds friction, so the
+        // pressure RISES from 7.0 MPa at A. Analytic (constant Z, f):
+        //   P1² − e^s·P2² = K·L·(e^s − 1)/s,  s = 2·g·Δz/a,  Δz = −2000 m.
+        const double length = 20e3, drop = -2000.0;
+        double s = 2.0 * G * drop / A;
+        double p2 = System.Math.Sqrt((49e12 - K * length * (System.Math.Exp(s) - 1.0) / s) / System.Math.Exp(s));
+
+        StationPlanningCriteria criteria = Criteria(7.0, 5.0) with { MaximumAllowableOperatingPressure = Pressure.FromMegapascals(7.5) };
+        StationPlan plan = Greedy(Straight(length, drop), criteria);
+        Print(plan);
+        _output.WriteLine($"analytic outlet {p2 / 1e6:F6} MPa(a)");
+
+        Assert.Empty(plan.Stations);
+        Assert.True(p2 > 7.5e6, "Test premise: the outlet must be above the MAOP.");
+        Assert.Equal(p2, plan.DeliveryPressure.Pascals, 10.0);
+        Assert.Contains(plan.Warnings, w => w.Contains("MAOP") && w.Contains("km 20.000"));
+    }
+
+    [Fact]
+    public void Maop_NotGiven_ShouldNotBeChecked()
+    {
+        StationPlan plan = Greedy(Straight(20e3, -2000.0), Criteria(7.0, 5.0));
+        Assert.DoesNotContain(plan.Warnings, w => w.Contains("MAOP"));
+    }
+
     [Fact]
     public void Criteria_DischargeNotAboveMinimumSuction_ShouldThrow()
     {

@@ -63,7 +63,11 @@ src/
     CompressorStationPlanner: station placement on a terrain profile
                   (method 1 maximum spacing, method 2 equal ratios,
                   station count vs power, layout evaluation)
-  NaturalGasPipeline.Mechanics       → Core (reserved, empty)
+  NaturalGasPipeline.Mechanics       → Core   PENDING REVIEW, see docs/MECHANICS_REVIEW.md
+    SteelPipeDesign: design pressure P = (2·S·t/D)·F·E·T (gauge), required wall,
+                  hoop stress, %SMYS, gauge ↔ absolute
+    DesignFactors / ApiLinePipeGrades: F by location class, E by seam,
+                  T by temperature, API 5L SMYS
 tests/
   NaturalGasPipeline.Core.Tests
   NaturalGasPipeline.Thermodynamics.Tests
@@ -71,11 +75,12 @@ tests/
   NaturalGasPipeline.Correlations.Tests
   NaturalGasPipeline.Compression.Tests
   NaturalGasPipeline.Network.Tests
+  NaturalGasPipeline.Mechanics.Tests
 docs/        project status, decisions, references
 scripts/     build-unity-plugins (Windows / Linux)
 ```
 
-Dependencies go one way only: `Core ← Thermodynamics ← Hydraulics ← Correlations ← Network` (and `Thermodynamics ← Compression ← Network`).
+Dependencies go one way only: `Core ← Thermodynamics ← Hydraulics ← Correlations ← Network` (and `Thermodynamics ← Compression ← Network`, `Mechanics ← Network`).
 New modules follow the same rule.
 
 ## Adding a model

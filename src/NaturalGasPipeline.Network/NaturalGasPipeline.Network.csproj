@@ -10,6 +10,8 @@
     <ProjectReference Include="..\NaturalGasPipeline.Hydraulics\NaturalGasPipeline.Hydraulics.csproj" />
     <ProjectReference Include="..\NaturalGasPipeline.Correlations\NaturalGasPipeline.Correlations.csproj" />
     <ProjectReference Include="..\NaturalGasPipeline.Compression\NaturalGasPipeline.Compression.csproj" />
+    <!-- Referenced so the Unity publish (from Network) also carries Mechanics. -->
+    <ProjectReference Include="..\NaturalGasPipeline.Mechanics\NaturalGasPipeline.Mechanics.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,9 +1,9 @@
 # NaturalGasPipeline — Project status
 
-**Version 2.1 — 2026-10-15.** Version 2.0 (2026-10-05) superseded the Spanish "Diagnóstico del motor" (v1, 2026-10-04).
+**Version 2.2 — 2026-10-16** (Mechanics module, pending review; see [MECHANICS_REVIEW.md](MECHANICS_REVIEW.md)). Version 2.1 — 2026-10-15. Version 2.0 (2026-10-05) superseded the Spanish "Diagnóstico del motor" (v1, 2026-10-04).
 Repository: `fabiandiego/NaturalGasPipeline.Core`, branch `master`. All earlier work branches were merged (PR #1, 2026-10-07) and deleted.
 Build and tests: GitHub Actions on every push (netstandard2.1 + net8.0, all tests), and Visual Studio 2022 on the owner's machine (344 tests passed on 2026-10-05, before the station-planning work).
-Unity DLLs: the CI job `unity-plugins` publishes the netstandard2.1 build to the orphan branch `unity-plugins`; the Unity project copies them to `Assets/_Project/Plugins/Engine/`, where `SOURCE.txt` records the engine commit.
+Unity DLLs: the CI job `unity-plugins` publishes the netstandard2.1 build of `master` (only `master`, since 2026-10-16) to the orphan branch `unity-plugins`; the Unity project copies them to `Assets/_Project/Plugins/Engine/`, where `SOURCE.txt` records the engine commit.
 
 ---
 
@@ -56,7 +56,7 @@ Core ← Thermodynamics ← Hydraulics ← Correlations ← Network
 | Correlations | Weymouth, Panhandle A/B, General Flow / AGA; solves Q, P1, P2 or D |
 | Compression | Isentropic / polytropic stage, multi-stage station with intercooling |
 | Network | Segment models, route profiles, series systems, nodal network solver, **compressor station planner** |
-| Mechanics | Reserved, empty |
+| Mechanics | **PENDING REVIEW.** Steel-pipe design pressure P = (2·S·t/D)·F·E·T (49 CFR §192.105 / ASME B31.8 §841.1.1), required wall, hoop stress and %SMYS, F/E/T tables, API 5L grades; MAOP check in the station planner. Open items M-1…M-3 in [MECHANICS_REVIEW.md](MECHANICS_REVIEW.md) |
 
 Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies compiler attributes on netstandard2.1. `scripts/build-unity-plugins.*` produces the DLLs for Unity.
 
@@ -104,6 +104,10 @@ Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies com
 
 ### Networks
 - Nodal method with Newton; validated against an independent Python (fsolve) implementation (pressures to 1e-7, flows to 1e-5 kg/s), analytic parallel split and tree-vs-direct solves. No published looped-network example with complete data has been found.
+
+### Mechanics (pending review)
+- Verified only against the public 49 CFR 192 text (formula and F, E, T tables) and hand calculations: NPS 20 × 0.500 in, 52 000 psi, F 0.72 → 1872 psig exactly; L360 → 12.96 MPa(g) (+0.41 % vs the psi-based SMYS). No B31.8 or Menon worked example reproduced yet (M-1).
+- Planner MAOP check validated analytically: a 20 km, −2000 m descent raises the pressure from 7.0 to the closed-form outlet value, and the warning is raised at the low point, not at the inlet.
 
 ## 5. Compressor station planning (question 3)
 
@@ -168,14 +172,13 @@ Planned additions when these start: `CandidateSites` on the problem (method 5), 
 
 ## 8. Open items and known issues
 
-- MAOP from ASME B31.8 (wall, grade, location class) to bound the discharge pressure.
+- Mechanics review items M-1…M-3 (B31.8 tables and worked example, Class 1 Division 1, SMYS basis). MAOP from test pressure and component ratings is not modelled.
 - Machinery library (compressors, drivers, efficiencies, fuel) — question 4.
 - Heating value (ISO 6976) is needed if drivers are gas turbines (previously parked as "PCS").
 - Non-isothermal pipe flow; compressors and regulators inside networks; GasLib validation.
 - Removed 2026-10-05 (owner's decision): `Unity Gas Pipeline Simulator_tester/`, a legacy stub superseded by the Correlations project.
-- `NaturalGasPipeline.Mechanics` is empty.
 - CI uses actions targeting Node.js 20 (deprecated; works, update when convenient).
-- CI runs on pushes to every branch, and the `unity-plugins` job republishes the DLLs from whichever branch was pushed last. Until the job is limited to `master`, the DLLs on `unity-plugins` may come from a work branch; check `SOURCE.txt` before copying them into Unity.
+- CI runs tests on pushes to every branch; since 2026-10-16 only `master` publishes `unity-plugins`. Still check `SOURCE.txt` before copying DLLs into Unity.
 - `BinaryInteractionDatabase` returns 0 for a misspelt component name; no default kij.
 
 ## 9. Sources that could not be accessed (to be supplied manually)
