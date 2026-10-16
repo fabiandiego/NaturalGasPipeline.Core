@@ -113,6 +113,11 @@ Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies com
 - `GasVelocityCalculator` (Hydraulics): V = ṁ/(ρ·A) and API RP 14E erosional velocity V_e = C/√ρ (Arnold & Stewart 2016, Eq. 6.15), converted exactly to SI (1.2199·C/√ρ); 30.48 m/s at 1 lbm/ft³, C = 100.
 - Planner: every section reports its maximum velocity, where it occurs and the maximum V/V_e; optional `MaximumGasVelocity` limit and `ErosionalVelocityConstant` (default 100) raise warnings. Validated against V = G·a/P with constant Z.
 
+### Literature cases shipped with the front end (2026-10-16)
+- `LiteratureCasesTests` runs the five example cases of the Unity front end (`Assets/StreamingAssets/Cases`) exactly as `EngineBridge` builds them (composition → SG with ISO 6976 air, constant Z with Z_std = 1, flat two-point route, no station needed). Outlet pressure vs published:
+  A&S Ex. 6.6a (A) isothermal Darcy f 0.015, 6 in: 884.29 vs 883 psia (+0.15 %, book rounding); A&S Ex. 6.6a (C) Panhandle B, 4 in: 771.08 vs 771 psia;
+  CED Ex. 11 Weymouth 946.241 vs 946.24 psia; Panhandle A 970.810 vs 970.81 psia; CED Ex. 12 General Flow F = 20, forward: 1014.703 vs 1014.7 psia.
+
 ## 5. Compressor station planning (question 3)
 
 All in `NaturalGasPipeline.Network`:
