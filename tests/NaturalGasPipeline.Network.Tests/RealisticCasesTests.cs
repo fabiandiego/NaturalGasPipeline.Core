@@ -79,6 +79,28 @@ public class RealisticCasesTests
 
         Assert.True(plan.DeliveryPressure.Megapascals >= c.DeliveryMPa - 1e-6);
 
+        // Published station counts (R1–R3) and regression values (S1–S2), see the manual, chapter 9.
+        switch (c.Id)
+        {
+            case "R1":
+                Assert.Equal(0, plan.StationCount); // TAP 10 bcm/y: no station between Kipoi and Fier
+                Assert.Equal(2, Run(c, 20e9 / 365 / 1e6, c.DeliveryMPa).StationCount); // 20 bcm/y: Serres and Bilisht added
+                break;
+            case "R2":
+                Assert.Equal(0, plan.StationCount); // Medgaz: no intermediate compression
+                Assert.True(plan.DeliveryPressure.Megapascals >= 8.2 * 1.0 + 0.101325); // arrival >= 82 barg
+                break;
+            case "R3":
+                Assert.Equal(3, plan.StationCount); // Ruby: Wildcat Hills, Wieland Flat, Desert Valley
+                break;
+            case "S1":
+                Assert.Equal(8, plan.StationCount);
+                break;
+            case "S2":
+                Assert.Equal(1, plan.StationCount);
+                break;
+        }
+
         // Repeated segment warnings (e.g. AGA8 above 12 MPa on every 1 km step of Medgaz) are summarised per section.
         Assert.InRange(plan.Warnings.Count, 0, 10);
     }

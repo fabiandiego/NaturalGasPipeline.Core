@@ -9,9 +9,9 @@ using Xunit.Abstractions;
 namespace NaturalGasPipeline.Network.Tests;
 
 /// <summary>
-/// The five literature example cases shipped with the Unity front end
-/// (StreamingAssets/Cases/*.json), run through the station planner exactly as
-/// the front end's EngineBridge does: composition → M and SG (ISO 6976 air),
+/// Five textbook pipe-flow examples run through the station planner exactly as
+/// the front end's EngineBridge would run them with the "Constant Z" option
+/// (the front end ships realistic cases instead, see RealisticCasesTests): composition → M and SG (ISO 6976 air),
 /// constant Z at flowing conditions with Z = 1 at standard conditions (as in
 /// the textbooks), standard flow → mass flow, a flat two-point route, and a
 /// target at B below the arrival pressure so that no station is placed and the
@@ -84,7 +84,7 @@ public class LiteratureCasesTests
 
     [Theory]
     [MemberData(nameof(CaseIds))]
-    public void LiteratureCase_AsRunByTheFrontEnd_ShouldReproduceThePublishedOutletPressure(string id)
+    public void LiteratureCase_ThroughThePlanner_ShouldReproduceThePublishedOutletPressure(string id)
     {
         LiteratureCase c = Cases.Single(x => x.Id == id);
         StationPlan plan = Run(c, out double sg, out MassFlow massFlow);
