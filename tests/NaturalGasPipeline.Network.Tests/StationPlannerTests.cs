@@ -599,6 +599,79 @@ public class StationPlannerTests
     /// 600 km terrain route, 28 MMm³/d, 7 → 5 MPa. Prints every number the
     /// concept screens display, and checks them against each other.
     /// </summary>
+    /// <summary>
+    /// The concept case with the front end's DEFAULT Z model, AGA8-DC92 DETAIL
+    /// (same gas, route, flow and limits as <see cref="TerrainRoute_ConceptCase_Report"/>;
+    /// Z from AGA8 everywhere: standard-flow conversion, pipe segments and
+    /// compression). Reference for a freshly installed program, which opens
+    /// with AGA8 selected. Compared with the DAK case printed alongside.
+    /// </summary>
+    [Fact]
+    public void TerrainRoute_ConceptCase_Aga8_Report()
+    {
+        static GasComponent With(GasComponent c, double y)
+        {
+            c.MoleFraction = y;
+            return c;
+        }
+
+        var gas = new GasMixture
+        {
+            Components =
+            {
+                With(StandardGasComponents.Methane, 0.900),
+                With(StandardGasComponents.Ethane, 0.050),
+                With(StandardGasComponents.Propane, 0.020),
+                With(StandardGasComponents.IsoButane, 0.003),
+                With(StandardGasComponents.NormalButane, 0.005),
+                With(StandardGasComponents.Nitrogen, 0.012),
+                With(StandardGasComponents.CarbonDioxide, 0.010)
+            }
+        };
+        gas.ValidateComposition();
+
+        MolarMass molarMass = gas.CalculateMolarMass();
+        var t = Temperature.FromDegreesCelsius(15.0);
+        var pStd = Pressure.FromKilopascals(101.325);
+        double[] elevations = { 420, 510, 600, 690, 650, 760, 800, 700, 620, 540, 580, 450, 380 };
+        ProfilePoint[] route = elevations
+            .Select((e, i) => new ProfilePoint(Length.FromKilometers(50.0 * i), Length.FromMeters(e)))
+            .ToArray();
+
+        PseudoCriticalProperties corrected = WichertAzizCorrection.Apply(PseudoCriticalProperties.FromKay(gas), 0.010, 0.0);
+
+        (StationPlan Plan, StationPlan MaxSpacing, double ZStd) Run(ICompressibilityModel z)
+        {
+            double zStd = z.Calculate(pStd, t);
+            var planner = new CompressorStationPlanner(new IsothermalSegmentModel(molarMass, z, new LeeGonzalezEakinViscosityModel()), t, molarMass, z, 1.28);
+            var standard = new StandardFlowConditions { Temperature = t, Pressure = pStd, CompressibilityFactor = zStd };
+            var q = new StandardVolumetricFlow(VolumeFlow.FromCubicMetersPerSecond(28.0e6 / 86400.0), standard);
+            StationPlanningProblem problem = planner.ProblemFor(route, Length.FromMeters(D), Roughness, q, Criteria(7.0, 5.0));
+            StationCountComparison table = planner.CompareStationCounts(problem, additionalStations: 3);
+            return (table.Options[0].Plan!, table.MaximumSpacing, zStd);
+        }
+
+        var aga8 = Run(new Aga8DetailModel(gas));
+        var dak = Run(CompressibilityModelFactory.Create(CorrespondingStatesModelType.DranchukAbouKassem, corrected));
+
+        _output.WriteLine("CONCEPT CASE, Z MODEL COMPARISON (method 2, minimum N)");
+        foreach ((string name, var r) in new[] { ("AGA8-DC92", aga8), ("DAK (Kay + W-A)", dak) })
+        {
+            _output.WriteLine(
+                $"  {name,-16} Z_std {r.ZStd:F5}  m_dot {r.Plan.MassFlow.KilogramsPerSecond:F2} kg/s  N {r.Plan.StationCount}  " +
+                $"ratio {r.Plan.Stations[0].PressureRatio:F4}  P_s {(double)r.Plan.TotalIsentropicPower.Megawatts:F3} MW  " +
+                $"(method 1: {(double)r.MaxSpacing.TotalIsentropicPower.Megawatts:F3} MW)  delivery {r.Plan.DeliveryPressure.Megapascals:F4} MPa");
+        }
+
+        double dP = (double)(aga8.Plan.TotalIsentropicPower.Watts / dak.Plan.TotalIsentropicPower.Watts) - 1.0;
+        _output.WriteLine($"  AGA8 vs DAK: power {dP * 100.0:+0.00;-0.00} %");
+        Print(aga8.Plan);
+
+        Assert.Equal(dak.Plan.StationCount, aga8.Plan.StationCount);
+        Assert.InRange(System.Math.Abs(dP), 0.0, 0.03);
+        Assert.Equal(5.0, aga8.Plan.DeliveryPressure.Megapascals, 1e-4);
+    }
+
     [Fact]
     public void TerrainRoute_ConceptCase_Report()
     {
