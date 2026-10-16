@@ -3,6 +3,7 @@ using NaturalGasPipeline.Core.Common;
 using NaturalGasPipeline.Core.Flow;
 using NaturalGasPipeline.Core.Numerics;
 using NaturalGasPipeline.Core.Pipeline;
+using NaturalGasPipeline.Hydraulics;
 using NaturalGasPipeline.Thermodynamics;
 using UnitsNet;
 
@@ -261,6 +262,12 @@ internal sealed class PlanningRun
         Discharge = PlanningGuard.RequirePositive(c.Discharge, nameof(c.StationDischargePressure));
         MinimumSuction = PlanningGuard.RequirePositive(c.MinimumSuction, nameof(c.MinimumSuctionPressure));
         _step = PlanningGuard.RequirePositive(c.MaximumStepLength.Meters, nameof(c.MaximumStepLength));
+        PlanningGuard.RequirePositive(c.ErosionalVelocityConstant, nameof(c.ErosionalVelocityConstant));
+
+        if (c.MaximumGasVelocity is Speed vmax)
+        {
+            PlanningGuard.RequirePositive(vmax.MetersPerSecond, nameof(c.MaximumGasVelocity));
+        }
 
         if (InletPressure <= MinimumSuction)
         {
@@ -432,6 +439,70 @@ internal sealed class PlanningRun
     }
 
     /// <summary>
+    /// Velocity and erosional ratio at every segment end of a section; the
+    /// maxima are stored on the section and checked against the criteria.
+    ///
+    /// Density at a segment end: ρ = ρ̄·P/P̄, i.e. the segment's average Z
+    /// is kept over the segment (ρ = P·M/(Z·R·T)). Over a marching step
+    /// (≤ 1 km by default) Z changes by well under 0.1 %, so this error is
+    /// negligible against the velocity limits being checked. The segment
+    /// inlet is covered by the previous segment's end, and the section inlet
+    /// is the highest-pressure (lowest-velocity) point, so ends suffice.
+    /// </summary>
+    private PipelineSection AddVelocityCheck(PipelineSection section, List<SegmentResult> segs, List<string> warnings)
+    {
+        if (segs.Count == 0)
+        {
+            return section;
+        }
+
+        double c = _problem.Criteria.ErosionalVelocityConstant;
+        double maxV = 0.0, maxAt = section.StartChainage.Meters, maxRatio = 0.0, ratioAt = maxAt;
+        double x = section.StartChainage.Meters;
+
+        foreach (SegmentResult seg in segs)
+        {
+            x += seg.Segment.Length.Meters;
+
+            var rho = Density.FromKilogramsPerCubicMeter(
+                seg.AverageDensity.KilogramsPerCubicMeter * seg.OutletPressure.Pascals / seg.AveragePressure.Pascals);
+            double v = GasVelocityCalculator.Velocity(seg.MassFlow, rho, seg.Segment.InternalDiameter).MetersPerSecond;
+            double ratio = v / GasVelocityCalculator.ErosionalVelocity(rho, c).MetersPerSecond;
+
+            if (v > maxV)
+            {
+                maxV = v;
+                maxAt = x;
+            }
+
+            if (ratio > maxRatio)
+            {
+                maxRatio = ratio;
+                ratioAt = x;
+            }
+        }
+
+        if (_problem.Criteria.MaximumGasVelocity is Speed limit && maxV > limit.MetersPerSecond + 1e-9)
+        {
+            warnings.Add(
+                $"{section.Name}: gas velocity {maxV:F2} m/s at km {maxAt / 1e3:F3} exceeds the limit {limit.MetersPerSecond:F2} m/s.");
+        }
+
+        if (maxRatio > 1.0)
+        {
+            warnings.Add(
+                $"{section.Name}: gas velocity at km {ratioAt / 1e3:F3} is {maxRatio:F2} × the API RP 14E erosional velocity (C = {c:F0}).");
+        }
+
+        return section with
+        {
+            MaximumVelocity = Speed.FromMetersPerSecond(maxV),
+            MaximumVelocityChainage = Length.FromMeters(maxAt),
+            MaximumErosionalRatio = maxRatio
+        };
+    }
+
+    /// <summary>
     /// Assembles a plan. <paramref name="sections"/> has one entry more than
     /// <paramref name="stations"/> (A → first station, …, last station → B).
     /// </summary>
@@ -492,6 +563,7 @@ internal sealed class PlanningRun
 
             warnings.AddRange(segs.SelectMany(s => s.Warnings).Distinct().Select(w => $"{name}: {w}"));
             AddMaopWarning(name, start, inlet, segs, warnings);
+            pipeSections[^1] = AddVelocityCheck(pipeSections[^1], segs, warnings);
         }
 
         return new StationPlan

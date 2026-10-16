@@ -50,6 +50,21 @@ public sealed record StationPlanningCriteria
     public Pressure? MaximumAllowableOperatingPressure { get; init; }
 
     /// <summary>
+    /// Design limit on the mean gas velocity. null: not checked (the
+    /// velocity is still reported per section). Typical long-distance
+    /// transmission velocities are 4.6–12 m/s (White et al., Compression
+    /// Machinery for Oil and Gas, 2019, ch. 9); the limit is the user's choice.
+    /// </summary>
+    public Speed? MaximumGasVelocity { get; init; }
+
+    /// <summary>
+    /// API RP 14E constant C for the erosional-velocity check V ≤ C/√ρ
+    /// (US units; 100 continuous, 125 intermittent, 60 corrosive service).
+    /// Always checked; see <c>GasVelocityCalculator</c>.
+    /// </summary>
+    public double ErosionalVelocityConstant { get; init; } = 100.0;
+
+    /// <summary>
     /// Factory for callers compiled with C# 9–10 (Unity 6): constructors of
     /// types with <c>required</c> members are blocked for compilers that do
     /// not support them, so object initialisers cannot be used there.
@@ -60,20 +75,26 @@ public sealed record StationPlanningCriteria
     /// <param name="minimumSuctionPressure">null: equal to the delivery pressure.</param>
     /// <param name="maximumStepLength">null: 1 km.</param>
     /// <param name="maximumAllowableOperatingPressure">Absolute MAOP; null: not checked.</param>
+    /// <param name="maximumGasVelocity">Velocity limit; null: not checked.</param>
+    /// <param name="erosionalVelocityConstant">API RP 14E C; default 100 (continuous service).</param>
     public static StationPlanningCriteria Create(
         Pressure inletPressure,
         Pressure deliveryPressure,
         Pressure? stationDischargePressure = null,
         Pressure? minimumSuctionPressure = null,
         Length? maximumStepLength = null,
-        Pressure? maximumAllowableOperatingPressure = null) => new()
+        Pressure? maximumAllowableOperatingPressure = null,
+        Speed? maximumGasVelocity = null,
+        double erosionalVelocityConstant = 100.0) => new()
     {
         InletPressure = inletPressure,
         DeliveryPressure = deliveryPressure,
         StationDischargePressure = stationDischargePressure,
         MinimumSuctionPressure = minimumSuctionPressure,
         MaximumStepLength = maximumStepLength ?? Length.FromKilometers(1.0),
-        MaximumAllowableOperatingPressure = maximumAllowableOperatingPressure
+        MaximumAllowableOperatingPressure = maximumAllowableOperatingPressure,
+        MaximumGasVelocity = maximumGasVelocity,
+        ErosionalVelocityConstant = erosionalVelocityConstant
     };
 
     internal double Discharge => (StationDischargePressure ?? InletPressure).Pascals;
@@ -181,6 +202,21 @@ public sealed record PipelineSection
     public required Pressure ElevationPressureDrop { get; init; }
 
     public required IReadOnlyList<SegmentResult> Segments { get; init; }
+
+    /// <summary>
+    /// Highest mean gas velocity in the section (at its lowest-pressure
+    /// point). Zero for a section without segments.
+    /// </summary>
+    public Speed MaximumVelocity { get; init; }
+
+    /// <summary>Chainage where <see cref="MaximumVelocity"/> occurs.</summary>
+    public Length MaximumVelocityChainage { get; init; }
+
+    /// <summary>
+    /// Highest V / V_erosional in the section (API RP 14E with the criteria's
+    /// C). Above 1 the erosional limit is exceeded.
+    /// </summary>
+    public double MaximumErosionalRatio { get; init; }
 }
 
 /// <summary>A solved station layout.</summary>

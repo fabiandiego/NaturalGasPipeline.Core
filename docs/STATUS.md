@@ -109,6 +109,10 @@ Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies com
 - Verified only against the public 49 CFR 192 text (formula and F, E, T tables) and hand calculations: NPS 20 × 0.500 in, 52 000 psi, F 0.72 → 1872 psig exactly; L360 → 12.96 MPa(g) (+0.41 % vs the psi-based SMYS). No B31.8 or Menon worked example reproduced yet (M-1).
 - Planner MAOP check validated analytically: a 20 km, −2000 m descent raises the pressure from 7.0 to the closed-form outlet value, and the warning is raised at the low point, not at the inlet.
 
+### Velocity check (2026-10-16)
+- `GasVelocityCalculator` (Hydraulics): V = ṁ/(ρ·A) and API RP 14E erosional velocity V_e = C/√ρ (Arnold & Stewart 2016, Eq. 6.15), converted exactly to SI (1.2199·C/√ρ); 30.48 m/s at 1 lbm/ft³, C = 100.
+- Planner: every section reports its maximum velocity, where it occurs and the maximum V/V_e; optional `MaximumGasVelocity` limit and `ErosionalVelocityConstant` (default 100) raise warnings. Validated against V = G·a/P with constant Z.
+
 ## 5. Compressor station planning (question 3)
 
 All in `NaturalGasPipeline.Network`:
