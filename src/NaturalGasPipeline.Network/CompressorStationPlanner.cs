@@ -439,6 +439,34 @@ internal sealed class PlanningRun
     }
 
     /// <summary>
+    /// Segment warnings of one section, one line per kind. Warnings that differ
+    /// only in their numbers (e.g. "Z model used outside its validated range at
+    /// P2 = 19580.1 kPa" on every 1 km step) are collapsed into the first one
+    /// plus a count, so a long section does not produce hundreds of lines.
+    /// </summary>
+    internal static IEnumerable<string> SummariseSegmentWarnings(IEnumerable<SegmentResult> segments)
+    {
+        var groups = new List<(string Key, string First, int Count, bool Identical)>();
+        foreach (string w in segments.SelectMany(s => s.Warnings))
+        {
+            string key = System.Text.RegularExpressions.Regex.Replace(w, @"[-+]?\d+(\.\d+)?", "#");
+            int i = groups.FindIndex(g => g.Key == key);
+            if (i < 0)
+            {
+                groups.Add((key, w, 1, true));
+            }
+            else
+            {
+                (string k, string first, int count, bool identical) = groups[i];
+                groups[i] = (k, first, count + 1, identical && w == first);
+            }
+        }
+
+        // Identical repeats collapse silently (as Distinct did); repeats with other numbers keep a count.
+        return groups.Select(g => g.Count == 1 || g.Identical ? g.First : $"{g.First} (and {g.Count - 1} more like it in this section)");
+    }
+
+    /// <summary>
     /// Velocity and erosional ratio at every segment end of a section; the
     /// maxima are stored on the section and checked against the criteria.
     ///
@@ -561,7 +589,7 @@ internal sealed class PlanningRun
                 Segments = segs
             });
 
-            warnings.AddRange(segs.SelectMany(s => s.Warnings).Distinct().Select(w => $"{name}: {w}"));
+            warnings.AddRange(SummariseSegmentWarnings(segs).Select(w => $"{name}: {w}"));
             AddMaopWarning(name, start, inlet, segs, warnings);
             pipeSections[^1] = AddVelocityCheck(pipeSections[^1], segs, warnings);
         }

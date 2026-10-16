@@ -78,6 +78,9 @@ public class RealisticCasesTests
         }
 
         Assert.True(plan.DeliveryPressure.Megapascals >= c.DeliveryMPa - 1e-6);
+
+        // Repeated segment warnings (e.g. AGA8 above 12 MPa on every 1 km step of Medgaz) are summarised per section.
+        Assert.InRange(plan.Warnings.Count, 0, 10);
     }
 
     private void Print(string title, ExampleCase c, StationPlan p)
