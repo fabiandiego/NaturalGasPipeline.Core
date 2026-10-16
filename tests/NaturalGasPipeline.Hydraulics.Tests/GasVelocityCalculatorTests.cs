@@ -22,7 +22,10 @@ public class GasVelocityCalculatorTests
     public void Erosional_OnePoundPerCubicFoot_C100_ShouldBe100FeetPerSecond()
     {
         // ρ = 1 lbm/ft³ → V_e = 100/√1 = 100 ft/s = 30.48 m/s exactly.
-        var rho = Density.FromPoundsPerCubicFoot(1.0);
+        // 1 lbm/ft³ is built from the exact definitions (0.45359237 kg / 0.3048³ m³):
+        // UnitsNet 5.75.1 Density.FromPoundsPerCubicFoot uses a rounded factor
+        // (density −6.8e-9 relative), which shows up here as V_e = 30.4800001 m/s.
+        var rho = Density.FromKilogramsPerCubicMeter(0.45359237 / (0.3048 * 0.3048 * 0.3048));
         Speed ve = GasVelocityCalculator.ErosionalVelocity(rho);
 
         _output.WriteLine($"ρ = {rho.KilogramsPerCubicMeter:F6} kg/m³ → V_e = {ve.FeetPerSecond:F9} ft/s = {ve.MetersPerSecond:F9} m/s");
