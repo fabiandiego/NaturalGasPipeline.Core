@@ -112,7 +112,8 @@ public class StationPlannerTests
         {
             _output.WriteLine(
                 $"  {sec.Name,-12} {sec.Length.Kilometers,8:F3} km: ΔP {sec.PressureDrop.Kilopascals,9:F1} kPa = " +
-                $"friction {sec.FrictionPressureDrop.Kilopascals,9:F1} + elevation {sec.ElevationPressureDrop.Kilopascals,8:F1}");
+                $"friction {sec.FrictionPressureDrop.Kilopascals,9:F1} + elevation {sec.ElevationPressureDrop.Kilopascals,8:F1}; " +
+                $"V_max {sec.MaximumVelocity.MetersPerSecond,6:F2} m/s at km {sec.MaximumVelocityChainage.Kilometers:F1}, V/V_e {sec.MaximumErosionalRatio:F2}");
         }
 
         foreach (string w in plan.Warnings)
@@ -293,6 +294,74 @@ public class StationPlannerTests
         Assert.True(p2 > 7.5e6, "Test premise: the outlet must be above the MAOP.");
         Assert.Equal(p2, plan.DeliveryPressure.Pascals, 10.0);
         Assert.Contains(plan.Warnings, w => w.Contains("MAOP") && w.Contains("km 20.000"));
+    }
+
+    // ------------------------------------------------------------ velocity check
+
+    [Fact]
+    public void Velocity_FlatRoute_ShouldMatchTheAnalyticValueAtEachSectionEnd()
+    {
+        // Constant Z: ρ = P/a, so V = G·a/P with G = ṁ/A. Highest velocity
+        // at the lowest pressure of each section = its outlet.
+        double pd = 7.0e6, pmin = 5.0e6;
+        double spacing = (pd * pd - pmin * pmin) / K;
+        double area = System.Math.PI * D * D / 4.0;
+        double g = Flow.KilogramsPerSecond / area;
+
+        StationPlan plan = Greedy(Straight(3.4 * spacing, 0.0), Criteria(7.0, 5.0));
+        Print(plan);
+
+        foreach (PipelineSection sec in plan.Sections)
+        {
+            double pOut = sec.OutletPressure.Pascals;
+            double v = g * A / pOut;
+            double ve = 0.3048 * 100.0 / System.Math.Sqrt(pOut / A / (0.45359237 / (0.3048 * 0.3048 * 0.3048)));
+
+            Assert.Equal(v, sec.MaximumVelocity.MetersPerSecond, 1e-6);
+            Assert.Equal(sec.EndChainage.Meters, sec.MaximumVelocityChainage.Meters, 1e-6);
+            Assert.Equal(v / ve, sec.MaximumErosionalRatio, 1e-7);
+        }
+
+        // Defaults: no velocity limit given, and V/V_e ≈ 0.49 < 1 → no velocity warnings.
+        Assert.DoesNotContain(plan.Warnings, w => w.Contains("velocity"));
+    }
+
+    [Fact]
+    public void Velocity_AboveTheLimit_ShouldWarnOnEverySectionThatExceedsIt()
+    {
+        // All four sections end at 5.0 MPa → V = G·a/5 MPa ≈ 9.04 m/s.
+        double pd = 7.0e6, pmin = 5.0e6;
+        double spacing = (pd * pd - pmin * pmin) / K;
+        double vAt5 = Flow.KilogramsPerSecond / (System.Math.PI * D * D / 4.0) * A / 5.0e6;
+        _output.WriteLine($"analytic V at 5 MPa: {vAt5:F4} m/s");
+
+        StationPlan below = Greedy(Straight(3.4 * spacing, 0.0), Criteria(7.0, 5.0) with { MaximumGasVelocity = Speed.FromMetersPerSecond(8.0) });
+        StationPlan above = Greedy(Straight(3.4 * spacing, 0.0), Criteria(7.0, 5.0) with { MaximumGasVelocity = Speed.FromMetersPerSecond(10.0) });
+        Print(below);
+
+        Assert.InRange(vAt5, 8.0, 10.0);
+        Assert.Equal(4, below.Warnings.Count(w => w.Contains("exceeds the limit")));
+        Assert.DoesNotContain(above.Warnings, w => w.Contains("exceeds the limit"));
+    }
+
+    [Fact]
+    public void Velocity_ErosionalLimitExceeded_ShouldWarn()
+    {
+        // C = 40: V_e = 1.2199·40/√(5e6/a) ≈ 7.3 m/s < 9.04 m/s at 5 MPa.
+        double pd = 7.0e6, pmin = 5.0e6;
+        double spacing = (pd * pd - pmin * pmin) / K;
+        StationPlan longRoute = Greedy(Straight(1.5 * spacing, 0.0), Criteria(7.0, 5.0) with { ErosionalVelocityConstant = 40.0 });
+        Print(longRoute);
+
+        Assert.Contains(longRoute.Warnings, w => w.Contains("API RP 14E erosional velocity (C = 40)"));
+        Assert.True(longRoute.Sections[0].MaximumErosionalRatio > 1.0);
+    }
+
+    [Fact]
+    public void Criteria_NonPositiveErosionalConstant_ShouldThrow()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            Greedy(Straight(50e3, 0.0), Criteria(7.0, 5.0) with { ErosionalVelocityConstant = 0.0 }));
     }
 
     [Fact]
