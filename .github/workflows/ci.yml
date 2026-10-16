@@ -91,6 +91,20 @@ jobs:
               print('::notice title=ZBenchmark::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
 
+      - name: Literature cases (annotation)
+        if: always()
+        shell: bash
+        run: |
+          dotnet test tests/NaturalGasPipeline.Network.Tests -c Release --no-build \
+            --filter "FullyQualifiedName~LiteratureCasesTests" \
+            --logger "console;verbosity=detailed" > lit.txt || true
+          python3 - <<'PY'
+          text = open('lit.txt', encoding='utf-8', errors='replace').read()
+          keep = [l.rstrip() for l in text.split('\n') if l.strip().startswith(('L1', 'L2', 'L3', 'L4', 'L5', 'SG ', 'P1 ', 'V_max', '!', 'Passed ', 'Failed '))]
+          body = '\n'.join(keep)[:3800] or 'no output captured'
+          print('::notice title=Literature cases::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
+          PY
+
       - name: Mechanics pending review (annotation)
         if: always()
         shell: bash
