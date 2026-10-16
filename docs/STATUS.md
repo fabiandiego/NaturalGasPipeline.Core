@@ -113,6 +113,15 @@ Targets: netstandard2.1 (Unity 6, Mono, C# 9) and net8.0. PolySharp supplies com
 - `GasVelocityCalculator` (Hydraulics): V = ṁ/(ρ·A) and API RP 14E erosional velocity V_e = C/√ρ (Arnold & Stewart 2016, Eq. 6.15), converted exactly to SI (1.2199·C/√ρ); 30.48 m/s at 1 lbm/ft³, C = 100.
 - Planner: every section reports its maximum velocity, where it occurs and the maximum V/V_e; optional `MaximumGasVelocity` limit and `ErosionalVelocityConstant` (default 100) raise warnings. Validated against V = G·a/P with constant Z.
 
+### Realistic example cases of the front end (2026-10-16)
+- `RealisticCasesTests` runs the five cases shipped with the Unity front end (`Assets/StreamingAssets/Cases`) with the default models, exactly as `EngineBridge` does. Published station counts reproduced: TAP onshore 10 bcm/y → 0 intermediate stations, 20 bcm/y → 2 (Serres, Bilisht); Medgaz → 0, arrival 13.7 MPa ≥ 82 barg; Ruby (minimum suction 800 psig, assumed) → 3 (Wildcat Hills, Wieland Flat, Desert Valley), placed in the same counties. Terrain profiles approximate; wall thickness and minimum suction are assumptions.
+- Repeated segment warnings are now summarised per section (one line plus a count) instead of one line per 1 km step.
+
+### Textbook cases through the planner (2026-10-16)
+- `LiteratureCasesTests` runs five textbook examples through the station planner as `EngineBridge` would with the Constant Z option (composition → SG with ISO 6976 air, constant Z with Z_std = 1, flat two-point route, no station needed). Outlet pressure vs published:
+  A&S Ex. 6.6a (A) isothermal Darcy f 0.015, 6 in: 884.29 vs 883 psia (+0.15 %, book rounding); A&S Ex. 6.6a (C) Panhandle B, 4 in: 771.08 vs 771 psia;
+  CED Ex. 11 Weymouth 946.241 vs 946.24 psia; Panhandle A 970.810 vs 970.81 psia; CED Ex. 12 General Flow F = 20, forward: 1014.703 vs 1014.7 psia.
+
 ## 5. Compressor station planning (question 3)
 
 All in `NaturalGasPipeline.Network`:
