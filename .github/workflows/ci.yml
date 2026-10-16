@@ -96,13 +96,14 @@ jobs:
         shell: bash
         run: |
           dotnet test tests/NaturalGasPipeline.Network.Tests -c Release --no-build \
-            --filter "FullyQualifiedName~LiteratureCasesTests" \
+            --filter "FullyQualifiedName~LiteratureCasesTests|FullyQualifiedName~RealisticCasesTests" \
             --logger "console;verbosity=detailed" > lit.txt || true
           python3 - <<'PY'
           text = open('lit.txt', encoding='utf-8', errors='replace').read()
-          keep = [l.rstrip() for l in text.split('\n') if l.strip().startswith(('L1', 'L2', 'L3', 'L4', 'L5', 'SG ', 'P1 ', 'V_max', '!', 'Passed ', 'Failed '))]
-          body = '\n'.join(keep)[:3800] or 'no output captured'
-          print('::notice title=Literature cases::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
+          keep = [l.rstrip() for l in text.split('\n') if l.strip().startswith(('L1', 'L2', 'L3', 'L4', 'L5', 'SG ', 'P1 ', 'CASE', 'CS-', 'A ', '!', 'Failed '))]
+          text_out = '\n'.join(keep) or 'no output captured'
+          for i in range(0, len(text_out), 3800):
+              print('::notice title=Example cases::' + text_out[i:i+3800].replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
 
       - name: Mechanics pending review (annotation)
