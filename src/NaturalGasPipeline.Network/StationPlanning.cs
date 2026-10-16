@@ -40,6 +40,16 @@ public sealed record StationPlanningCriteria
     public Length MaximumStepLength { get; init; } = Length.FromKilometers(1.0);
 
     /// <summary>
+    /// Maximum allowable operating pressure of the line pipe, ABSOLUTE
+    /// (convert a code design pressure with
+    /// <c>NaturalGasPipeline.Mechanics.SteelPipeDesign.ToAbsolute</c>).
+    /// null: not checked. When set, every point of every section is compared
+    /// with it, so pressure regained in downhill stretches is caught too;
+    /// exceedances are reported as warnings, not exceptions.
+    /// </summary>
+    public Pressure? MaximumAllowableOperatingPressure { get; init; }
+
+    /// <summary>
     /// Factory for callers compiled with C# 9–10 (Unity 6): constructors of
     /// types with <c>required</c> members are blocked for compilers that do
     /// not support them, so object initialisers cannot be used there.
@@ -49,18 +59,21 @@ public sealed record StationPlanningCriteria
     /// <param name="stationDischargePressure">null: equal to the inlet pressure.</param>
     /// <param name="minimumSuctionPressure">null: equal to the delivery pressure.</param>
     /// <param name="maximumStepLength">null: 1 km.</param>
+    /// <param name="maximumAllowableOperatingPressure">Absolute MAOP; null: not checked.</param>
     public static StationPlanningCriteria Create(
         Pressure inletPressure,
         Pressure deliveryPressure,
         Pressure? stationDischargePressure = null,
         Pressure? minimumSuctionPressure = null,
-        Length? maximumStepLength = null) => new()
+        Length? maximumStepLength = null,
+        Pressure? maximumAllowableOperatingPressure = null) => new()
     {
         InletPressure = inletPressure,
         DeliveryPressure = deliveryPressure,
         StationDischargePressure = stationDischargePressure,
         MinimumSuctionPressure = minimumSuctionPressure,
-        MaximumStepLength = maximumStepLength ?? Length.FromKilometers(1.0)
+        MaximumStepLength = maximumStepLength ?? Length.FromKilometers(1.0),
+        MaximumAllowableOperatingPressure = maximumAllowableOperatingPressure
     };
 
     internal double Discharge => (StationDischargePressure ?? InletPressure).Pascals;

@@ -75,11 +75,27 @@ jobs:
               print('::notice title=ZBenchmark::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
           PY
 
+      - name: Mechanics pending review (annotation)
+        if: always()
+        shell: bash
+        run: |
+          dotnet test tests/NaturalGasPipeline.Mechanics.Tests -c Release --no-build \
+            --filter "FullyQualifiedName~MechanicsReviewTests|FullyQualifiedName~ConceptCasePipe_Report" \
+            --logger "console;verbosity=detailed" > mech.txt || true
+          python3 - <<'PY'
+          text = open('mech.txt', encoding='utf-8', errors='replace').read()
+          lines = [l.rstrip() for l in text.split('\n') if l.strip().startswith(('MECHANICS', '[M-', 'OD ', 'grade', 'L360', 'L450', 'L485'))]
+          body = '\n'.join(lines)[:3800] or 'no output captured'
+          print('::warning title=Mechanics pending review::' + body.replace('%', '%25').replace('\r', '').replace('\n', '%0A'))
+          PY
+
   unity-plugins:
     # Publishes the netstandard2.1 engine DLLs (what Unity 6 loads) to the
     # branch "unity-plugins", from which the Unity project takes them.
     needs: test
-    if: github.event_name == 'push'
+    # Only master publishes: a push to a work branch must not overwrite the
+    # DLLs the Unity project copies (see SOURCE.txt on unity-plugins).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: write

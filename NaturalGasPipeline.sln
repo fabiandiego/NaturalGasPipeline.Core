@@ -40,6 +40,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Compress
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Network.Tests", "tests\NaturalGasPipeline.Network.Tests\NaturalGasPipeline.Network.Tests.csproj", "{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NaturalGasPipeline.Mechanics.Tests", "tests\NaturalGasPipeline.Mechanics.Tests\NaturalGasPipeline.Mechanics.Tests.csproj", "{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -98,6 +100,10 @@ Global
 		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -116,6 +122,7 @@ Global
 		{BE57732C-C90B-4CA7-8E92-E8A5E50E8A1C} = {1A0AEECE-F3CC-4BDB-B53B-2F57A2FF6FA2}
 		{4D05A40D-58A7-426D-A2E0-1074DB7B47B9} = {90552509-5A20-4679-80A3-95905B0DE3E1}
 		{62BB6556-6FB5-4EA1-9F24-4C2E829AEB0A} = {90552509-5A20-4679-80A3-95905B0DE3E1}
+		{11B9C4FD-2E4F-4BF3-B411-FB592AA9002D} = {90552509-5A20-4679-80A3-95905B0DE3E1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0121B387-7EE0-44A7-B8E1-CC47D5981FBF}

@@ -390,6 +390,48 @@ internal sealed class PlanningRun
     }
 
     /// <summary>
+    /// Compares the highest pressure in a section (section inlet and every
+    /// segment end) with the MAOP of the criteria, when one is given. The
+    /// maximum is not always at the inlet: downhill stretches can regain
+    /// pressure. Pressures are absolute on both sides.
+    /// </summary>
+    private void AddMaopWarning(string name, double start, double inlet, List<SegmentResult> segs, List<string> warnings)
+    {
+        if (_problem.Criteria.MaximumAllowableOperatingPressure is not Pressure maop)
+        {
+            return;
+        }
+
+        double limit = PlanningGuard.RequirePositive(maop.Pascals, nameof(StationPlanningCriteria.MaximumAllowableOperatingPressure));
+        double peak = inlet;
+        double peakAt = start;
+        double x = start;
+
+        foreach (SegmentResult seg in segs)
+        {
+            if (seg.InletPressure.Pascals > peak)
+            {
+                peak = seg.InletPressure.Pascals;
+                peakAt = x;
+            }
+
+            x += seg.Segment.Length.Meters;
+
+            if (seg.OutletPressure.Pascals > peak)
+            {
+                peak = seg.OutletPressure.Pascals;
+                peakAt = x;
+            }
+        }
+
+        if (peak > limit + 1.0)
+        {
+            warnings.Add(
+                $"{name}: pressure {peak / 1e6:F4} MPa(a) at km {peakAt / 1e3:F3} exceeds the MAOP {limit / 1e6:F4} MPa(a).");
+        }
+    }
+
+    /// <summary>
     /// Assembles a plan. <paramref name="sections"/> has one entry more than
     /// <paramref name="stations"/> (A → first station, …, last station → B).
     /// </summary>
@@ -449,6 +491,7 @@ internal sealed class PlanningRun
             });
 
             warnings.AddRange(segs.SelectMany(s => s.Warnings).Distinct().Select(w => $"{name}: {w}"));
+            AddMaopWarning(name, start, inlet, segs, warnings);
         }
 
         return new StationPlan
