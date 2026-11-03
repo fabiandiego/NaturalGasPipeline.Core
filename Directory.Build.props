@@ -13,5 +13,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- CS1591: missing XML comment. Documentation is encouraged, not enforced. -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- License metadata for NuGet packages; full text in LICENSE. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) 2026 fabiandiego</Copyright>
   </PropertyGroup>
 </Project>
