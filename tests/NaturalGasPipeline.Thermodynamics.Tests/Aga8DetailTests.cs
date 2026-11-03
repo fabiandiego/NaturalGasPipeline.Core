@@ -205,6 +205,84 @@ public class Aga8DetailTests
         Assert.Contains(violations, v => v.StartsWith("H2S"));
     }
 
+    /// <summary>
+    /// The two parts of the normal range are independent. Gas: front-end example
+    /// case R1 (TAP onshore; GGTC analysis 2026-10-16, mol %), butanes
+    /// 0.3244 + 0.6872 = 1.0116 % > 1 %. At the line inlet (9.601325 MPa(a), 15 °C)
+    /// and at standard conditions (101.325 kPa, 15 °C) P and T are inside
+    /// 17–143 °F and ≤ 1750 psia, so only the composition is outside.
+    /// </summary>
+    [Fact]
+    public void NormalRange_CompositionOutside_ShouldNotFailPressureTemperatureCheck()
+    {
+        var r1 = new GasMixture
+        {
+            Components =
+            {
+                With(StandardGasComponents.Methane, .924835), With(StandardGasComponents.Ethane, .03941),
+                With(StandardGasComponents.Propane, .017646), With(StandardGasComponents.IsoButane, .003244),
+                With(StandardGasComponents.NormalButane, .006872), With(StandardGasComponents.Nitrogen, .000934),
+                With(StandardGasComponents.CarbonDioxide, .007059)
+            }
+        };
+        var model = new Aga8DetailModel(r1);
+        var t = Temperature.FromDegreesCelsius(15.0);
+
+        bool composition = model.CompositionWithinNormalRange(out IReadOnlyList<string> violations);
+        _output.WriteLine($"R1 composition violations: {string.Join("; ", violations)}");
+
+        Assert.False(composition);
+        // Message numbers follow the current culture (1.012 or 1,012), so only the component is asserted.
+        Assert.StartsWith("butanes ", Assert.Single(violations));
+        Assert.True(model.IsWithinValidatedRange(Pressure.FromKilopascals(9601.325), t));
+        Assert.True(model.IsWithinValidatedRange(Pressure.FromKilopascals(101.325), t));
+    }
+
+    /// <summary>
+    /// The converse: a gas inside the composition limits (the concept gas) at
+    /// 20 MPa is outside the pressure part of the normal range.
+    /// </summary>
+    [Fact]
+    public void NormalRange_PressureOutside_ShouldNotDependOnComposition()
+    {
+        var model = new Aga8DetailModel(DetailFractions("Concept"));
+        var t = Temperature.FromDegreesCelsius(15.0);
+
+        Assert.True(model.CompositionWithinNormalRange(out IReadOnlyList<string> violations));
+        Assert.Empty(violations);
+        Assert.False(model.IsWithinValidatedRange(Pressure.FromMegapascals(20.0), t));
+        Assert.True(model.IsWithinValidatedRange(Pressure.FromMegapascals(7.0), t));
+    }
+
+    /// <summary>
+    /// Limits of the P–T part, from the published field units: 17 °F, 143 °F
+    /// and 1750 psia. Expected values computed by hand from the exact
+    /// definitions (°F → K: (F + 459.67)·5/9; 1 psi = 6894.757293168361 Pa):
+    /// 264.816667 K, 334.816667 K, 12.065825 MPa. Limits are inclusive.
+    /// </summary>
+    [Fact]
+    public void NormalRange_Limits_ShouldMatchPublishedFieldUnits()
+    {
+        var model = new Aga8DetailModel(DetailFractions("Concept"));
+        double tMin = Aga8DetailModel.NormalRangeMinimumTemperatureKelvins;
+        double tMax = Aga8DetailModel.NormalRangeMaximumTemperatureKelvins;
+        double pMax = Aga8DetailModel.NormalRangeMaximumPressurePascals;
+
+        _output.WriteLine($"T_min {tMin:F6} K, T_max {tMax:F6} K, P_max {pMax / 1e6:F6} MPa");
+        Assert.Equal(264.816667, tMin, 6);
+        Assert.Equal(334.816667, tMax, 6);
+        Assert.Equal(12.065825, pMax / 1e6, 6);
+
+        var tIn = Temperature.FromKelvins(288.15);
+        var pIn = Pressure.FromMegapascals(7.0);
+        Assert.True(model.IsWithinValidatedRange(Pressure.FromPascals(pMax), tIn));
+        Assert.False(model.IsWithinValidatedRange(Pressure.FromPascals(pMax + 1.0), tIn));
+        Assert.True(model.IsWithinValidatedRange(pIn, Temperature.FromKelvins(tMin)));
+        Assert.False(model.IsWithinValidatedRange(pIn, Temperature.FromKelvins(tMin - 0.01)));
+        Assert.True(model.IsWithinValidatedRange(pIn, Temperature.FromKelvins(tMax)));
+        Assert.False(model.IsWithinValidatedRange(pIn, Temperature.FromKelvins(tMax + 0.01)));
+    }
+
     [Theory]
     [MemberData(nameof(NistReferenceData.PureFluidDensities), MemberType = typeof(NistReferenceData))]
     public void Z_ShouldMatchNistReferenceEquationsForPureFluids(string fluid, double t, double pMpa, double density)

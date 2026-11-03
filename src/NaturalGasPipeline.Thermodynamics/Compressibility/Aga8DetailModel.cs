@@ -18,8 +18,11 @@ namespace NaturalGasPipeline.Thermodynamics;
 ///
 /// Uncertainty stated by AGA for the normal range (≈ 265–335 K, ≤ 12 MPa,
 /// pipeline-quality gas): about 0.1 % in Z. Outside the normal range the
-/// equation is still evaluated and <see cref="IsWithinValidatedRange"/>
-/// returns false so the caller can warn.
+/// equation is still evaluated; the caller warns. The normal range has two
+/// independent parts, checked separately so one cause gives one warning:
+/// pressure and temperature (<see cref="IsWithinValidatedRange"/>, called
+/// at every point) and composition (<see cref="CompositionWithinNormalRange"/>,
+/// a property of the gas, checked once by whoever defines the fluid).
 /// </summary>
 public sealed class Aga8DetailModel : ICompressibilityCorrelation
 {
@@ -144,19 +147,40 @@ public sealed class Aga8DetailModel : ICompressibilityCorrelation
         return z;
     }
 
+    /// <summary>Lower temperature of the AGA 8 (1994) normal range: 17 °F = 264.8167 K (exact °F → K).</summary>
+    public const double NormalRangeMinimumTemperatureKelvins = (17.0 + 459.67) * 5.0 / 9.0;
+
+    /// <summary>Upper temperature of the AGA 8 (1994) normal range: 143 °F = 334.8167 K (exact °F → K).</summary>
+    public const double NormalRangeMaximumTemperatureKelvins = (143.0 + 459.67) * 5.0 / 9.0;
+
     /// <summary>
-    /// The AGA 8 (1994) normal range for the DETAIL method:
-    /// 17–143 °F (264.8–334.8 K), up to 1750 psia (12.07 MPa), and
-    /// composition limits (mol %): CH4 ≥ 45, N2 ≤ 50, CO2 ≤ 30, C2H6 ≤ 10,
-    /// C3H8 ≤ 4, butanes ≤ 1, pentanes ≤ 0.3, C6+ ≤ 0.2, H2S ≤ 0.02,
-    /// H2 ≤ 10, CO ≤ 3, He ≤ 0.2, O2 = 0, Ar = 0.
+    /// Upper pressure of the AGA 8 (1994) normal range: 1750 psia = 12.0658 MPa.
+    /// 1 psi = 0.45359237 kg · 9.80665 m/s² / (0.0254 m)², from the exact definitions
+    /// of the pound, standard gravity and the inch.
+    /// </summary>
+    public const double NormalRangeMaximumPressurePascals = 1750.0 * 0.45359237 * 9.80665 / (0.0254 * 0.0254);
+
+    /// <summary>
+    /// Pressure–temperature part of the AGA 8 (1994) normal range for the
+    /// DETAIL method: 17–143 °F, up to 1750 psia (see the NormalRange
+    /// constants). Honours <see cref="ICompressibilityCorrelation"/>: only
+    /// (P, T) is checked. The composition part of the normal range is
+    /// <see cref="CompositionWithinNormalRange"/>.
     /// </summary>
     public bool IsWithinValidatedRange(Pressure pressure, Temperature temperature) =>
-        temperature.Kelvins >= 264.8 && temperature.Kelvins <= 334.9
-        && pressure.Megapascals <= 12.07
-        && CompositionWithinNormalRange(out _);
+        temperature.Kelvins >= NormalRangeMinimumTemperatureKelvins
+        && temperature.Kelvins <= NormalRangeMaximumTemperatureKelvins
+        && pressure.Pascals <= NormalRangeMaximumPressurePascals;
 
-    /// <summary>Composition check against the AGA 8 normal range; lists every limit exceeded.</summary>
+    /// <summary>
+    /// Composition part of the AGA 8 (1994) normal range; lists every limit
+    /// exceeded. Limits (mol %): CH4 ≥ 45, N2 ≤ 50, CO2 ≤ 30, C2H6 ≤ 10,
+    /// C3H8 ≤ 4, butanes ≤ 1, pentanes ≤ 0.3, C6+ ≤ 0.2, H2 ≤ 10, O2 = 0,
+    /// CO ≤ 3, H2O ≤ 0.05, H2S ≤ 0.02, He ≤ 0.2, Ar = 0.
+    /// Independent of P and T: a gas outside these limits keeps
+    /// <see cref="IsWithinValidatedRange"/> true at in-range (P, T), but the
+    /// stated 0.1 % uncertainty in Z does not apply to it.
+    /// </summary>
     public bool CompositionWithinNormalRange(out IReadOnlyList<string> violations)
     {
         var v = new List<string>();
