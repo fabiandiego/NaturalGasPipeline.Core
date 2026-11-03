@@ -1,0 +1,942 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NaturalGasPipeline.Thermodynamics</name>
+    </assembly>
+    <members>
+        <member name="T:NaturalGasPipeline.Thermodynamics.DryAirMolarMass">
+             <summary>
+             Molar mass of dry air used to define the specific gravity (relative
+             density) of a gas, γ = M_gas / M_air (ideal-gas definition).
+            
+             There is no single value: each standard or textbook fixes its own, and
+             the choice changes γ by up to 0.14 %. The engine never picks one
+             silently; the caller passes the reference that matches the source of
+             its data.
+             </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.DryAirMolarMass.Iso6976_2016">
+            <summary>ISO 6976:2016, 28.96546 g/mol.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.DryAirMolarMass.Gpa2145_09">
+            <summary>GPA Standard 2145-09, 28.9625 g/mol.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.DryAirMolarMass.Gthps">
+            <summary>
+            28.96 g/mol, the value of the original GTHPS program
+            (G = MW_gas / 28.96, Final Report).
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.DryAirMolarMass.Rounded29">
+            <summary>
+            29 g/mol, the rounded value of Arnold &amp; Stewart, Surface Production
+            Operations, Eq. 6.5 (S = MW / 29); use it to reproduce book examples.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.SpecificGravity">
+            <summary>Specific gravity (relative density to air) of a gas, ideal-gas definition.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.SpecificGravity.FromMolarMass(UnitsNet.MolarMass,UnitsNet.MolarMass)">
+            <summary>γ = M_gas / M_air.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.SpecificGravity.ToMolarMass(System.Double,UnitsNet.MolarMass)">
+            <summary>M_gas = γ · M_air.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.SpecificGravity.OfMixture(NaturalGasPipeline.Thermodynamics.GasMixture,UnitsNet.MolarMass)">
+            <summary>γ of a mixture of known composition, γ = Σ yᵢ·Mᵢ / M_air.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation">
+             <summary>
+             Pseudo-critical properties from the gas specific gravity γ (air = 1),
+             for when the composition is not known.
+            
+             To add a correlation: implement this interface, state the source, the
+             units of the published coefficients and the γ range in the XML
+             documentation, and convert to SI inside the implementation.
+             </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation.Name">
+            <summary>Short, human-readable name for reports.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation.Calculate(System.Double)">
+            <summary>Tpc and Ppc for specific gravity γ.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation.IsWithinValidatedRange(System.Double)">
+            <summary>True when γ lies in the range the correlation was fitted on.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.QuadraticPseudoCriticalCorrelation">
+            <summary>
+            Shared plumbing for the quadratic field-unit correlations
+            Tpc [°R] = t₀ + t₁·γ + t₂·γ², Ppc [psia] = p₀ + p₁·γ + p₂·γ².
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.QuadraticPseudoCriticalCorrelation.Coefficients">
+            <summary>(t₀, t₁, t₂) in °R and (p₀, p₁, p₂) in psia, as published.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.SuttonPseudoCriticalCorrelation">
+            <summary>
+            Sutton (1985), SPE 14265:
+              Tpc [°R]   = 169.2 + 349.5·γ − 74.0·γ²
+              Ppc [psia] = 756.8 − 131.0·γ − 3.6·γ²
+            Reported range 0.57 &lt; γ &lt; 1.68, hydrocarbon gas (rich gases included).
+            For CO₂/H₂S apply <see cref="T:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection"/> afterwards.
+            Coefficients as in Whitson &amp; Brulé, SPE Phase Behavior Monograph
+            (Eq. 3.60–3.61); some textbooks print the Ppc slope as 131.07, a
+            difference below 0.01 % of Ppc for natural gas.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.StandingGasSystem">
+            <summary>Which of Standing's two curves to use.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.StandingGasSystem.NaturalGas">
+            <summary>Dry hydrocarbon gas: Tpc = 168 + 325γ − 12.5γ², Ppc = p₀ + 15.0γ − 37.5γ².</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.StandingGasSystem.GasCondensate">
+            <summary>Wet gas / gas condensate: Tpc = 187 + 330γ − 71.5γ², Ppc = 706 − 51.7γ − 11.1γ².</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.StandingCoefficientSet">
+            <summary>
+            Published versions of Standing's dry-gas Ppc curve, which differ in the
+            intercept p₀. Both are in use; the caller states which one its data follow.
+            </summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.StandingCoefficientSet.WhitsonBrule">
+            <summary>p₀ = 667 psia: Whitson &amp; Brulé, SPE Phase Behavior Monograph.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.StandingCoefficientSet.Ahmed">
+            <summary>
+            p₀ = 677 psia: Ahmed, Reservoir Engineering Handbook, and the university
+            course notes that follow it (e.g. King Saud University PGE 362).
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.StandingPseudoCriticalCorrelation">
+             <summary>
+             Standing (1977) pseudo-critical curves, field units (°R, psia), for
+             hydrocarbon gas without non-hydrocarbons (apply
+             <see cref="T:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection"/> or <see cref="T:NaturalGasPipeline.Thermodynamics.CarrKobayashiBurrowsCorrection"/>
+             for CO₂, H₂S, N₂).
+            
+             Sources disagree on the dry-gas Ppc intercept (667 or 677 psia, 1.5 % in
+             Ppc); <see cref="T:NaturalGasPipeline.Thermodynamics.StandingCoefficientSet"/> makes the choice explicit.
+             The condensate curve is the same in both (Ppc slope −51.7: Ppc must fall
+             as the gas gets heavier). Whitson &amp; Brulé recommend the dry-gas curve
+             for γ ≤ 0.75 and the condensate curve above;
+             <see cref="M:NaturalGasPipeline.Thermodynamics.StandingPseudoCriticalCorrelation.IsWithinValidatedRange(System.Double)"/> follows that.
+             </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection">
+            <summary>
+            Wichert &amp; Aziz (1972) correction of pseudo-critical properties for
+            sour gas (field units, as published):
+              A = y_CO₂ + y_H₂S,  B = y_H₂S
+              ε [°R] = 120·(A^0.9 − A^1.6) + 15·(B^0.5 − B^4)
+              T'pc = Tpc − ε
+              P'pc = Ppc · T'pc / (Tpc + B·(1 − B)·ε)
+            Reported range: y_CO₂ &lt; 0.544, y_H₂S &lt; 0.738.
+            Never applied implicitly: the caller decides whether the gas needs it.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection.AdjustmentRankine(System.Double,System.Double)">
+            <summary>ε in °R (equivalently, ε/1.8 in K).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.CarrKobayashiBurrowsCorrection">
+            <summary>
+            Carr, Kobayashi &amp; Burrows (1954) correction of pseudo-critical
+            properties for non-hydrocarbons, used when only the gas gravity is known
+            (field units, as published):
+              T'pc [°R]   = Tpc − 80·y_CO₂ + 130·y_H₂S − 250·y_N₂
+              P'pc [psia] = Ppc + 440·y_CO₂ + 600·y_H₂S − 170·y_N₂
+            Coefficients as in King Saud University PGE 362 (Khamis, 2015) and
+            Ahmed, Reservoir Engineering Handbook. Never applied implicitly.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties">
+             <summary>
+             Pseudo-critical temperature and pressure of a gas, the reducing
+             parameters of the corresponding-states Z correlations
+             (Tpr = T / Tpc, Ppr = P / Ppc).
+            
+             They are not the true critical point of the mixture: they are whatever
+             values make the generalized Z chart (Standing–Katz) fit the gas. Where
+             they come from is a modelling choice and must be stated by the caller:
+             - <see cref="M:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties.FromKay(NaturalGasPipeline.Thermodynamics.GasMixture)"/>: mole-fraction average of the component critical
+               properties (Kay 1936), when the composition is known;
+             - <see cref="T:NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation"/>: from specific gravity
+               (Sutton, Standing), when only γ is known;
+             - <see cref="T:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection"/>: adjustment for CO₂ and H₂S.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties.ReducedTemperature(UnitsNet.Temperature)">
+            <summary>Tpr = T / Tpc (absolute temperatures).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties.ReducedPressure(UnitsNet.Pressure)">
+            <summary>Ppr = P / Ppc (absolute pressures).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties.FromKay(NaturalGasPipeline.Thermodynamics.GasMixture)">
+            <summary>
+            Kay's rule: Tpc = Σ yᵢ·Tcᵢ, Ppc = Σ yᵢ·Pcᵢ.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.Aga8DetailModel">
+             <summary>
+             AGA Report No. 8 Part 1, DETAIL characterization equation of state
+             (AGA8-DC92; ISO 12213-2) — the reference equation for the compression
+             factor of natural gas in transmission and custody transfer.
+            
+             Port of the NIST reference implementation (E. W. Lemmon, I. H. Bell,
+             usnistgov/AGA8, <c>AGA8CODE/C/Detail.cpp</c>, version 2.0, 2017); the
+             NIST code is not subject to copyright in the United States and its
+             notice permits use, modification and redistribution. Constants, units
+             (kPa, mol/L, K, R = 8.31451) and algorithms are kept as in the original;
+             only the global state was replaced by an immutable, thread-safe instance
+             per composition.
+            
+             Uncertainty stated by AGA for the normal range (≈ 265–335 K, ≤ 12 MPa,
+             pipeline-quality gas): about 0.1 % in Z. Outside the normal range the
+             equation is still evaluated; the caller warns. The normal range has two
+             independent parts, checked separately so one cause gives one warning:
+             pressure and temperature (<see cref="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.IsWithinValidatedRange(UnitsNet.Pressure,UnitsNet.Temperature)"/>, called
+             at every point) and composition (<see cref="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.CompositionWithinNormalRange(System.Collections.Generic.IReadOnlyList{System.String}@)"/>,
+             a property of the gas, checked once by whoever defines the fluid).
+             </summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.ComponentCount">
+            <summary>Number of components of the DETAIL equation.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.#ctor(NaturalGasPipeline.Thermodynamics.GasMixture)">
+            <summary>
+            Builds the model for a mixture. Component names map onto the DETAIL
+            components (see <see cref="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.DetailIndex(System.String)"/>); an unknown name throws —
+            no component is dropped or substituted silently. Mole fractions must
+            add up to 1 (±1e-6).
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.#ctor(System.Collections.Generic.IReadOnlyList{System.Double})">
+            <summary>Builds the model from mole fractions in DETAIL order (index 1..21; index 0 unused).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.DetailFractions">
+            <summary>Mole fraction of each DETAIL component (index 1..21).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.DetailIndex(System.String)">
+            <summary>
+            Index of an engine component name in the DETAIL component list:
+            1 methane, 2 nitrogen, 3 CO2, 4 ethane, 5 propane, 6 isobutane,
+            7 n-butane, 8 isopentane, 9 n-pentane, 10 n-hexane, 11 n-heptane,
+            12 n-octane, 13 n-nonane, 14 n-decane, 15 hydrogen, 16 oxygen,
+            17 CO, 18 water, 19 H2S, 20 helium, 21 argon.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.MolarMassGramsPerMole">
+            <summary>Molar mass of the mixture with the DETAIL molar masses (g/mol).</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.NormalRangeMinimumTemperatureKelvins">
+            <summary>Lower temperature of the AGA 8 (1994) normal range: 17 °F = 264.8167 K (exact °F → K).</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.NormalRangeMaximumTemperatureKelvins">
+            <summary>Upper temperature of the AGA 8 (1994) normal range: 143 °F = 334.8167 K (exact °F → K).</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.NormalRangeMaximumPressurePascals">
+            <summary>
+            Upper pressure of the AGA 8 (1994) normal range: 1750 psia = 12.0658 MPa.
+            1 psi = 0.45359237 kg · 9.80665 m/s² / (0.0254 m)², from the exact definitions
+            of the pound, standard gravity and the inch.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.IsWithinValidatedRange(UnitsNet.Pressure,UnitsNet.Temperature)">
+            <summary>
+            Pressure–temperature part of the AGA 8 (1994) normal range for the
+            DETAIL method: 17–143 °F, up to 1750 psia (see the NormalRange
+            constants). Honours <see cref="T:NaturalGasPipeline.Thermodynamics.ICompressibilityCorrelation"/>: only
+            (P, T) is checked. The composition part of the normal range is
+            <see cref="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.CompositionWithinNormalRange(System.Collections.Generic.IReadOnlyList{System.String}@)"/>.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.CompositionWithinNormalRange(System.Collections.Generic.IReadOnlyList{System.String}@)">
+            <summary>
+            Composition part of the AGA 8 (1994) normal range; lists every limit
+            exceeded. Limits (mol %): CH4 ≥ 45, N2 ≤ 50, CO2 ≤ 30, C2H6 ≤ 10,
+            C3H8 ≤ 4, butanes ≤ 1, pentanes ≤ 0.3, C6+ ≤ 0.2, H2 ≤ 10, O2 = 0,
+            CO ≤ 3, H2O ≤ 0.05, H2S ≤ 0.02, He ≤ 0.2, Ar = 0.
+            Independent of P and T: a gas outside these limits keeps
+            <see cref="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.IsWithinValidatedRange(UnitsNet.Pressure,UnitsNet.Temperature)"/> true at in-range (P, T), but the
+            stated 0.1 % uncertainty in Z does not apply to it.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.Density(System.Double,System.Double)">
+            <summary>Molar density (mol/L) at T (K) and P (kPa): the NIST iteration on ln(v).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.PressureAt(System.Double,System.Double,System.Double@,System.Double@,System.Double@)">
+            <summary>Pressure (kPa), Z and dP/dD [kPa/(mol/L)] at T (K) and molar density D (mol/L).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.Properties(System.Double,System.Double)">
+            <summary>Thermodynamic properties at T (K) and P (kPa), as in the NIST PropertiesDetail.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.Aga8DetailModel.P">
+            <summary>Constants of the DETAIL equation (SetupDetail), computed once.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.Aga8Properties">
+            <summary>Properties from the AGA8 DETAIL equation (units of the NIST code: g/mol, mol/L, kPa, J/mol, K).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.Aga8Properties.#ctor(System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>Properties from the AGA8 DETAIL equation (units of the NIST code: g/mol, mol/L, kPa, J/mol, K).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.CngaCompressibilityModel">
+             <summary>
+             California Natural Gas Association (CNGA) correlation, explicit, as
+             given by Menon, Gas Pipeline Hydraulics (Eq. 1.12):
+            
+               Z = 1 / (1 + Pg · 344400 · 10^(1.785·G) / Tf^3.825)
+            
+               Pg  gauge pressure, psig
+               Tf  temperature, °R
+               G   gas specific gravity (air = 1)
+            
+             The formula works with GAUGE pressure, so the atmospheric pressure is
+             an explicit input (no silent 14.7 psia). Menon states it is valid for
+             Pg &gt; 100 psig and takes Z = 1 below; this implementation always
+             evaluates the formula (Z → 1 smoothly as Pg → 0, with no jump at
+             100 psig) and reports Pg ≤ 100 psig as outside the validated range.
+            
+             A candidate for the "PCS (closed-form)" Z option of the original GTHPS
+             program, together with <see cref="T:NaturalGasPipeline.Thermodynamics.PapayModel"/>; the report does not say
+             which one it used.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.CompressibilityModelFactory.Create(NaturalGasPipeline.Thermodynamics.CompressibilityModelType,NaturalGasPipeline.Thermodynamics.GasMixture,NaturalGasPipeline.Thermodynamics.BinaryInteractionDatabase)">
+            <summary>
+            Z model for a mixture of known composition. The corresponding-states
+            correlations use Kay pseudo-criticals with no sour-gas correction;
+            for CO₂/H₂S build the model from
+            <see cref="T:NaturalGasPipeline.Thermodynamics.WichertAzizCorrection"/> with <see cref="M:NaturalGasPipeline.Thermodynamics.CompressibilityModelFactory.Create(NaturalGasPipeline.Thermodynamics.CorrespondingStatesModelType,NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties)"/>.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.CompressibilityModelFactory.Create(NaturalGasPipeline.Thermodynamics.CorrespondingStatesModelType,NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties)">
+            <summary>
+            Corresponding-states Z correlation for given pseudo-critical
+            properties (from Kay, Sutton, Standing, with or without Wichert-Aziz).
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.CompressibilityModelFactory.CreateFromSpecificGravity(NaturalGasPipeline.Thermodynamics.CorrespondingStatesModelType,System.Double,NaturalGasPipeline.Thermodynamics.IPseudoCriticalCorrelation)">
+            <summary>
+            Corresponding-states Z correlation for a gas known only by its
+            specific gravity: γ → (Tpc, Ppc) by <paramref name="pseudoCriticalCorrelation"/>.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.CompressibilityModelType">
+            <summary>Z models that can be built from a gas mixture of known composition.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.CompressibilityModelType.DranchukAbouKassem">
+            <summary>DAK with Kay pseudo-criticals of the mixture.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.CompressibilityModelType.HallYarborough">
+            <summary>Hall-Yarborough with Kay pseudo-criticals of the mixture.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.CompressibilityModelType.Papay">
+            <summary>Papay with Kay pseudo-criticals of the mixture.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.CompressibilityModelType.Aga8Detail">
+            <summary>AGA8-DC92 DETAIL equation (ISO 12213-2), the natural-gas reference.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.CorrespondingStatesModelType">
+            <summary>Correlations of the generalized Z chart, Z = Z(Tpr, Ppr).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.ConstantCompressibilityModel">
+            <summary>
+            User-defined, state-independent compressibility factor
+            (the "user-defined Z" option of the GTHPS specification).
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.CorrespondingStatesCompressibilityModel">
+             <summary>
+             Base for Z correlations of the generalized (Standing–Katz) chart:
+             Z = Z(Tpr, Ppr) with Tpr = T/Tpc and Ppr = P/Ppc. Where the
+             pseudo-critical properties come from is the caller's choice
+             (<see cref="T:NaturalGasPipeline.Thermodynamics.PseudoCriticalProperties"/>).
+            
+             To add a correlation: derive from this class, implement
+             <see cref="M:NaturalGasPipeline.Thermodynamics.CorrespondingStatesCompressibilityModel.CalculateFromReducedProperties(System.Double,System.Double)"/> and the validated range in
+             reduced coordinates, and document the source.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.CorrespondingStatesCompressibilityModel.CalculateFromReducedProperties(System.Double,System.Double)">
+            <summary>Z at pseudo-reduced temperature Tpr and pressure Ppr.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.CorrespondingStatesCompressibilityModel.IsWithinValidatedReducedRange(System.Double,System.Double)">
+            <summary>Validated range in reduced coordinates.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.DranchukAbouKassemModel">
+             <summary>
+             Dranchuk &amp; Abou-Kassem (1975): 11-constant fit of the Standing–Katz
+             chart (Benedict-Webb-Rubin form), solved for the reduced density
+             ρr = 0.27·Ppr / (Z·Tpr):
+            
+               Z = 1 + (A1 + A2/Tr + A3/Tr³ + A4/Tr⁴ + A5/Tr⁵)·ρr
+                     + (A6 + A7/Tr + A8/Tr²)·ρr²
+                     − A9·(A7/Tr + A8/Tr²)·ρr⁵
+                     + A10·(1 + A11·ρr²)·(ρr²/Tr³)·exp(−A11·ρr²)
+            
+             Validated range: 1.0 ≤ Tpr ≤ 3.0, 0.2 ≤ Ppr ≤ 30.
+             Inside that range the equation has exactly one root in 0 &lt; ρr ≤ 3
+             (checked on an 81 × 150 grid, largest root 2.46), found by Brent's method.
+             Measured against NIST (pure methane/nitrogen, Kay pseudo-criticals =
+             true criticals): see CorrespondingStatesAccuracyTests.
+             </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.HallYarboroughModel">
+             <summary>
+             Hall &amp; Yarborough (1973): Starling-Carnahan form fitted to the
+             Standing–Katz chart, solved for the reduced density parameter y:
+            
+               t = 1/Tpr
+               0 = −A·Ppr + (y + y² + y³ − y⁴)/(1 − y)³ − B·y² + C·y^D
+               A = 0.06125·t·exp(−1.2·(1 − t)²)
+               B = t·(14.76 − 9.76·t + 4.58·t²)
+               C = t·(90.7 − 242.2·t + 42.4·t²)
+               D = 2.18 + 2.82·t
+               Z = A·Ppr / y
+            
+             Validated range, as usually reported: 1.15 ≤ Tpr ≤ 3.0, 0.2 ≤ Ppr ≤ 20.5.
+             Below Tpr ≈ 1.15 it departs from DAK by up to 12 % (measured at Tpr 1.05).
+             The equation has one root in 0 &lt; y &lt; 1 over 1 ≤ Tpr ≤ 3,
+             0.2 ≤ Ppr ≤ 30 (checked on an 81 × 150 grid; largest root y = 0.55),
+             found by Brent's method.
+             </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.PapayModel">
+             <summary>
+             Papay (1968), explicit:
+               Z = 1 − 3.53·Ppr / 10^(0.9813·Tpr) + 0.274·Ppr² / 10^(0.8157·Tpr)
+            
+             Closed form, no iteration. The sources consulted give no validity range.
+             The range declared here is where Papay stays within
+             <see cref="F:NaturalGasPipeline.Thermodynamics.PapayModel.MaxDeviationFromDak"/> (5 %) of DAK, the reference fit of the
+             same chart. That region is not a rectangle: the largest acceptable Ppr
+             grows from 0.53 at Tpr 1.0 to 7.45 at Tpr 1.4 and beyond, so it is
+             tabulated every 0.05 in Tpr (<see cref="M:NaturalGasPipeline.Thermodynamics.PapayModel.MaxReducedPressure(System.Double)"/>), each node
+             rounded down to 0.01 and the lower of the two neighbouring nodes used in
+             between. Scanned for Ppr ≤ 15. Dense check (401 × 300 points inside the
+             region, 2026-10-04): largest deviation 4.998 %.
+             </summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Thermodynamics.PapayModel.MaxDeviationFromDak">
+            <summary>Acceptance criterion used to build the validated range.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.PapayModel.MaxReducedPressure(System.Double)">
+            <summary>
+            Largest Ppr inside the validated range at this Tpr (conservative:
+            lower of the two bracketing table nodes); 0 outside 1 ≤ Tpr ≤ 3.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.ICompressibilityCorrelation">
+            <summary>
+            An empirical Z model with a published range of validity.
+            Outside the range the model still returns a value; callers report a
+            warning (as <c>IsothermalGasFlowSolver</c> does) rather than fail.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.ICompressibilityCorrelation.Name">
+            <summary>Short, human-readable model name for reports.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.ICompressibilityCorrelation.IsWithinValidatedRange(UnitsNet.Pressure,UnitsNet.Temperature)">
+            <summary>True when (P, T) lies inside the range the correlation was fitted on.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.GasMixture.CalculateMolarMass">
+            <summary>
+            Mixture molar mass: M = Σ yᵢ·Mᵢ.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.GasState">
+             <summary>
+             Thermodynamic state of a gas mixture at a given pressure and temperature.
+            
+             Inputs (pressure, temperature, mixture) are init-only: once the state is
+             built they cannot change, so calculated results can never refer to stale
+             inputs. Every calculation checks its preconditions and throws instead of
+             returning a silently wrong value (Z = 0, M = 0, ρ = ∞, ...).
+             </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.GasState.CompressibilityFactor">
+            <summary>
+            Compressibility factor. 0 means "not calculated yet".
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.GasState.MolarMass">
+            <summary>
+            Mixture molar mass. Zero means "not calculated yet".
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Thermodynamics.GasState.Viscosity">
+            <summary>
+            Dynamic viscosity. Zero means "not calculated yet".
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.GasState.CalculateDensity">
+            <summary>
+            ρ = P·M / (Z·R·T).
+            Requires the compressibility factor to have been calculated first.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.GasState.CalculateViscosity(NaturalGasPipeline.Thermodynamics.IViscosityModel)">
+            <summary>
+            Viscosity at the current state. Requires the density to have been
+            calculated first (CalculateDensity or CalculateState).
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Thermodynamics.GasState.ToGasProperties">
+            <summary>
+            Immutable snapshot of the calculated properties, for other modules or
+            a front end. Requires the density (and therefore Z) to be calculated;
+            the viscosity is included only if it was calculated.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.ConstantViscosityModel">
+            <summary>
+            User-defined, state-independent viscosity
+            (e.g. the 0.012–0.013 cP often assumed for facility gas piping).
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.IViscosityModel">
+            <summary>
+            Dynamic viscosity of a gas at a given state.
+            The density must be the flowing density at (P, T), normally from
+            <see cref="T:NaturalGasPipeline.Thermodynamics.GasState"/>; the model does not compute it.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Thermodynamics.LeeGonzalezEakinViscosityModel">
+             <summary>
+             Lee, Gonzalez &amp; Eakin (1966), "The Viscosity of Natural Gases",
+             J. Pet. Technol. 18(8), 997-1000.
+            
+               μ [cP] = 1e-4 · K · exp(X · ρ^Y)
+               K = (9.4 + 0.02·M) · T^1.5 / (209 + 19·M + T)
+               X = 3.5 + 986 / T + 0.01·M
+               Y = 2.4 − 0.2·X
+             with T in °R, M in g/mol and ρ in g/cm³ (the correlation's own units;
+             the conversion is done here, explicitly, and nowhere else).
+            
+             Applicability: hydrocarbon natural gases. Measured against NIST
+             (methane, 273–313 K, 1–10 MPa) it over-predicts by +1.2 % to +4.1 %.
+             It is NOT valid for non-hydrocarbon gases: for pure nitrogen it is
+             off by about −45 %. Gases with a large N₂/CO₂/H₂S content need a
+             correction (e.g. Carr–Kobayashi–Burrows) or a different model.
+             </summary>
+        </member>
+        <member name="T:Microsoft.CodeAnalysis.EmbeddedAttribute">
+            <summary>
+            A special attribute recognized by Roslyn, that marks a type as "embedded", meaning it won't ever be visible from other assemblies.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute">
+            <summary>
+            Indicates that compiler support for a particular feature is required for the location where this attribute is applied.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.#ctor(System.String)">
+            <summary>
+            Creates a new instance of the <see cref="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute"/> type.
+            </summary>
+            <param name="featureName">The name of the feature to indicate.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName">
+            <summary>
+            The name of the compiler feature.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.IsOptional">
+            <summary>
+            If true, the compiler can choose to allow access to the location where this attribute is applied if it does not understand <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/>.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RefStructs">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the ref structs C# feature.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RequiredMembers">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the required members C# feature.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ModuleInitializerAttribute">
+             <summary>
+             Used to indicate to the compiler that a method should be called
+             in its containing module's initializer.
+             </summary>
+             <remarks>
+             When one or more valid methods
+             with this attribute are found in a compilation, the compiler will
+             emit a module initializer which calls each of the attributed methods.
+            
+             Certain requirements are imposed on any method targeted with this attribute:
+             - The method must be `static`.
+             - The method must be an ordinary member method, as opposed to a property accessor, constructor, local function, etc.
+             - The method must be parameterless.
+             - The method must return `void`.
+             - The method must not be generic or be contained in a generic type.
+             - The method's effective accessibility must be `internal` or `public`.
+            
+             The specification for module initializers in the .NET runtime can be found here:
+             https://github.com/dotnet/runtime/blob/main/docs/design/specs/Ecma-335-Augments.md#module-initializer
+             </remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute">
+            <summary>
+            An attribute that allows parameters to receive the expression of other parameters.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute"/> class.
+            </summary>
+            <param name="parameterName">The condition parameter value.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute.ParameterName">
+            <summary>
+            Gets the parameter name the expression is retrieved from.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute">
+            <summary>
+            Specifies the priority of a member in overload resolution. When unspecified, the default priority is 0.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute.#ctor(System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute"/> class.
+            </summary>
+            <param name="priority">The priority of the attributed member. Higher numbers are prioritized, lower numbers are deprioritized. 0 is the default if no attribute is present.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute.Priority">
+            <summary>
+            The priority of the member.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.InterpolatedStringHandlerAttribute">
+            <summary>
+            Indicates the attributed type is to be used as an interpolated string handler.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.IsExternalInit">
+            <summary>
+            Reserved to be used by the compiler for tracking metadata.
+            This class should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ParamCollectionAttribute">
+            <summary>
+            Indicates that a method will allow a variable number of arguments in its invocation.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.RequiresLocationAttribute">
+            <summary>
+            Reserved for use by a compiler for tracking metadata.
+            This attribute should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute">
+            <summary>
+            When applied to an attribute class, instructs the compiler to flow applications of that attribute,
+            from source code down to compiler-generated symbols. This can help IL-based analysis tools.
+            </summary>
+            <remarks>
+            One example where this attribute applies is in C# primary constructor parameters. If an attribute
+            marked with <see cref="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute"/> gets applied to a primary constructor
+            parameter, the attribute will also be applied to any compiler-generated fields storing that parameter.
+            </remarks>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute"/> class.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.SkipLocalsInitAttribute">
+            <summary>
+            Used to indicate to the compiler that the <c>.locals init</c> flag should not be set in method headers.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CollectionBuilderAttribute.#ctor(System.Type,System.String)">
+            <summary>
+            Initialize the attribute to refer to the <paramref name="methodName"/> method on the <paramref name="builderType"/> type.
+            </summary>
+            <param name="builderType">The type of the builder to use to construct the collection.</param>
+            <param name="methodName">The name of the method on the builder to use to construct the collection.</param>
+            <remarks>
+            <paramref name="methodName"/> must refer to a static method that accepts a single parameter of
+            type <see cref="T:System.ReadOnlySpan`1"/> and returns an instance of the collection being built containing
+            a copy of the data from that span.  In future releases of .NET, additional patterns may be supported.
+            </remarks>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CollectionBuilderAttribute.BuilderType">
+            <summary>
+            Gets the type of the builder to use to construct the collection.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CollectionBuilderAttribute.MethodName">
+            <summary>
+            Gets the name of the method on the builder to use to construct the collection.
+            </summary>
+            <remarks>
+            This should match the metadata name of the target method.
+            For example, this might be ".ctor" if targeting the type's constructor.
+            </remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute">
+            <summary>
+            Indicates which arguments to a method involving an interpolated string handler should be passed to that handler.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute"/> class.
+            </summary>
+            <param name="argument">The name of the argument that should be passed to the handler.</param>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.#ctor(System.String[])">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute"/> class.
+            </summary>
+            <param name="arguments">The names of the arguments that should be passed to the handler.</param>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.Arguments">
+            <summary>
+            Gets the names of the arguments that should be passed to the handler.
+            </summary>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ExtensionMarkerAttribute">
+            <summary>
+            This attribute is used to mark extension members and associate them with a specific marker type (which provides detailed information about an extension block and its receiver parameter).
+            This attribute should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.ExtensionMarkerAttribute.#ctor(System.String)">
+            <summary>Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.ExtensionMarkerAttribute"/> class.</summary>
+            <param name="name">The name of the marker type this extension member is associated with.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.ExtensionMarkerAttribute.Name">
+            <summary>The name of the marker type this extension member is associated with.</summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.RequiredMemberAttribute">
+            <summary>
+            Specifies that a type has required members or that a member is required.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute"/> class.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute"/> class with the specified message.
+            </summary>
+            <param name="message">An optional message associated with this attribute instance.</param>
+        </member>
+        <member name="P:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.Message">
+            <summary>
+            Returns the optional message associated with this attribute instance.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.Url">
+            <summary>
+            Returns the optional URL associated with this attribute instance.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute">
+            <summary>
+            Specifies the syntax used in a string.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String)">
+            <summary>
+            Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.
+            </summary>
+            <param name="syntax">The syntax identifier.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String,System.Object[])">
+            <summary>Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.</summary>
+            <param name="syntax">The syntax identifier.</param>
+            <param name="arguments">Optional arguments associated with the specific syntax employed.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Syntax">
+            <summary>Gets the identifier of the syntax used.</summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Arguments">
+            <summary>Optional arguments associated with the specific syntax employed.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.CompositeFormat">
+            <summary>The syntax identifier for strings containing composite formats for string formatting.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateOnlyFormat">
+            <summary>The syntax identifier for strings containing date format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateTimeFormat">
+            <summary>The syntax identifier for strings containing date and time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.EnumFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Enum"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.GuidFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Guid"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Json">
+            <summary>The syntax identifier for strings containing JavaScript Object Notation (JSON).</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.NumericFormat">
+            <summary>The syntax identifier for strings containing numeric format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Regex">
+            <summary>The syntax identifier for strings containing regular expressions.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeOnlyFormat">
+            <summary>The syntax identifier for strings containing time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeSpanFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.TimeSpan"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Uri">
+            <summary>The syntax identifier for strings containing URIs.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Xml">
+            <summary>The syntax identifier for strings containing XML.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute">
+            <summary>
+            Specifies that this constructor sets all required members for the current type,
+            and callers do not need to set any required members themselves.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.UnscopedRefAttribute">
+            <summary>
+            Used to indicate a byref escapes and is not scoped.
+            </summary>
+            <remarks>
+            <para>
+            There are several cases where the C# compiler treats a <see langword="ref"/> as implicitly
+            <see langword="scoped"/> - where the compiler does not allow the <see langword="ref"/> to escape the method.
+            </para>
+            <para>
+            For example:
+            <list type="number">
+                <item><see langword="this"/> for <see langword="struct"/> instance methods.</item>
+                <item><see langword="ref"/> parameters that refer to <see langword="ref"/> <see langword="struct"/> types.</item>
+                <item><see langword="out"/> parameters.</item>
+            </list>
+            </para>
+            <para>
+            This attribute is used in those instances where the <see langword="ref"/> should be allowed to escape.
+            </para>
+            <para>
+            Applying this attribute, in any form, has impact on consumers of the applicable API. It is necessary for
+            API authors to understand the lifetime implications of applying this attribute and how it may impact their users.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute">
+            <summary>
+            Specifies that the method or property will ensure that the listed field and property
+            members have not-null values when returning with the specified return value condition.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String)">
+            <summary>
+            Initializes the attribute with the specified return value condition and a field or property member.
+            </summary>
+            <param name="returnValue">The return value condition. If the method returns this value, the associated parameter will not be null.</param>
+            <param name="member">The field or property member that is promised to be not-null.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String[])">
+            <summary>
+            Initializes the attribute with the specified return value condition and list of field and property members.
+            </summary>
+            <param name="returnValue">The return value condition. If the method returns this value, the associated parameter will not be null.</param>
+            <param name="members">The list of field and property members that are promised to be not-null.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.ReturnValue">
+            <summary>
+            Gets the return value condition.
+            </summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.Members">
+            <summary>
+            Gets field or property member names.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute">
+            <summary>
+            Specifies that the method or property will ensure that the listed field and property members have not-null values.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String)">
+            <summary>
+            Initializes the attribute with a field or property member.
+            </summary>
+            <param name="member">The field or property member that is promised to be not-null.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String[])">
+            <summary>
+            Initializes the attribute with the list of field and property members.
+            </summary>
+            <param name="members">The list of field and property members that are promised to be not-null.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.Members">
+            <summary>
+            Gets field or property member names.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute">
+            <summary>
+            Indicates that an API is experimental and it may change in the future.
+            </summary>
+            <remarks>
+            This attribute allows call sites to be flagged with a diagnostic that indicates that an experimental
+            feature is used. Authors can use this attribute to ship preview features in their assemblies.
+            </remarks>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute"/> class,
+            specifying the ID that the compiler will use when reporting a use of the API the attribute applies to.
+            </summary>
+            <param name="diagnosticId">The ID that the compiler will use when reporting a use of the API the attribute applies to.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.DiagnosticId">
+            <summary>
+            Gets the ID that the compiler will use when reporting a use of the API the attribute applies to.
+            </summary>
+            <value>The unique diagnostic ID.</value>
+            <remarks>
+            The diagnostic ID is shown in build output for warnings and errors.
+            <para>This property represents the unique ID that can be used to suppress the warnings or errors, if needed.</para>
+            </remarks>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.UrlFormat">
+            <summary>
+            Gets or sets the URL for corresponding documentation.
+            The API accepts a format string instead of an actual URL, creating a generic URL that includes the diagnostic ID.
+            </summary>
+            <value>The format string that represents a URL to corresponding documentation.</value>
+            <remarks>An example format string is <c>https://contoso.com/obsoletion-warnings/{0}</c>.</remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute">
+            <summary>
+            Indicates that the specified method parameter expects a constant.
+            </summary>
+            <remarks>
+            This can be used to inform tooling that a constant should be used as an argument for the annotated parameter.
+            </remarks>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute.Min">
+            <summary>
+            Indicates the minimum bound of the expected constant, inclusive.
+            </summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute.Max">
+            <summary>
+            Indicates the maximum bound of the expected constant, inclusive.
+            </summary>
+        </member>
+    </members>
+</doc>

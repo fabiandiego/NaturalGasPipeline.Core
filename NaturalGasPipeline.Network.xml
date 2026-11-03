@@ -1,0 +1,1040 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NaturalGasPipeline.Network</name>
+    </assembly>
+    <members>
+        <member name="T:NaturalGasPipeline.Network.CompressorStationPlanner">
+             <summary>
+             Answers "how many compressor stations, and how far apart?" for a route
+             with a real elevation profile.
+            
+             The planner owns the physics (pipe-flow model, flowing temperature, gas)
+             and three building blocks shared by every placement method:
+             - marching along the route, forward from A or backward from B, stopping
+               where the pressure reaches a given value (located exactly by Brent's
+               method inside a step);
+             - <see cref="M:NaturalGasPipeline.Network.CompressorStationPlanner.EvaluateLayout(NaturalGasPipeline.Network.StationPlanningProblem,System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.StationSetting})"/>: the hydraulics of any given layout
+               (station positions and discharge pressures), which optimisation
+               methods use to score candidates;
+             - the result assembly (sections, friction / elevation split, isentropic
+               power per station).
+            
+             Placement methods: <see cref="T:NaturalGasPipeline.Network.MaximumSpacingPlacement"/> (method 1) and
+             <see cref="T:NaturalGasPipeline.Network.EqualRatioPlacement"/> (method 2); <see cref="M:NaturalGasPipeline.Network.CompressorStationPlanner.CompareStationCounts(NaturalGasPipeline.Network.StationPlanningProblem,System.Int32)"/>
+             tabulates power against the number of stations.
+            
+             Stated assumptions:
+             - pipe flow is isothermal at the flowing (ground) temperature; the gas
+               leaves each station cooled to that temperature (aftercooler duty is not
+               computed here);
+             - station power is the isentropic power (η = 1) from the fluid's
+               heat-capacity ratio: the minimum any machine needs. Real power follows
+               from the hardware chosen later.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorStationPlanner.#ctor(NaturalGasPipeline.Network.ISegmentModel,UnitsNet.Temperature,UnitsNet.MolarMass,NaturalGasPipeline.Thermodynamics.ICompressibilityModel,System.Double)">
+            <param name="segmentModel">Pipe segment calculation.</param>
+            <param name="flowingTemperature">Gas temperature in the pipe (isothermal).</param>
+            <param name="molarMass">Molar mass of the gas (flow conversion and isentropic power).</param>
+            <param name="compressibility">Z model of the gas (for the isentropic power).</param>
+            <param name="heatCapacityRatio">k = cp/cv of the gas (for the isentropic power).</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorStationPlanner.ProblemFor(System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.ProfilePoint},UnitsNet.Length,UnitsNet.Length,NaturalGasPipeline.Core.Flow.StandardVolumetricFlow,NaturalGasPipeline.Network.StationPlanningCriteria)">
+            <summary>
+            Builds a problem from a standard volumetric flow. The conversion to
+            mass flow is explicit: ṁ = Q_std·P_std·M / (Z_std·R·T_std) with the
+            conditions carried by <paramref name="standardFlow"/>.
+            </summary>
+            <param name="route">Surveyed route profile from A to B.</param>
+            <param name="internalDiameter">Pipe internal diameter.</param>
+            <param name="absoluteRoughness">Pipe wall roughness.</param>
+            <param name="standardFlow">Design flow at stated standard conditions.</param>
+            <param name="criteria">Pressure criteria.</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorStationPlanner.Plan(NaturalGasPipeline.Network.StationPlanningProblem,NaturalGasPipeline.Network.IStationPlacementMethod)">
+            <summary>Places stations with the given method.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorStationPlanner.CompareStationCounts(NaturalGasPipeline.Network.StationPlanningProblem,System.Int32)">
+            <summary>
+            Method 1 for the minimum number of stations, then method 2 for
+            N = N_min … N_min + <paramref name="additionalStations"/>.
+            </summary>
+            <param name="problem">The planning problem.</param>
+            <param name="additionalStations">How many station counts above the minimum to evaluate.</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorStationPlanner.EvaluateLayout(NaturalGasPipeline.Network.StationPlanningProblem,System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.StationSetting})">
+            <summary>
+            Hydraulics of a given layout: marches from A with the inlet pressure;
+            at each station the gas is compressed to the given discharge pressure.
+            No station is moved and nothing is trimmed: criteria that are not met
+            (suction below the minimum, discharge above the limit, delivery below
+            the target) are reported as warnings, so that optimisation methods can
+            score and reject candidates.
+            </summary>
+            <param name="problem">The planning problem.</param>
+            <param name="stations">Stations in flow order, strictly inside the route.</param>
+            <exception cref="T:System.ArgumentException">A discharge pressure is below the suction pressure, or positions are not increasing.</exception>
+            <exception cref="T:NaturalGasPipeline.Core.Flow.FlowCapacityExceededException">The flow cannot pass some part of the route.</exception>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationPlacementInfeasibleException">
+            <summary>Thrown when a placement method cannot meet the criteria (e.g. too few stations).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.PlanningRun">
+            <summary>
+            One planning calculation: the route, flow and criteria of a problem with
+            the planner's physics. Shared by the placement methods.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.Forward(System.Double,System.Double,System.Nullable{System.Double},System.Nullable{System.Double})">
+            <summary>
+            From (x, p) towards the end of the route (or <paramref name="end"/>);
+            stops where the pressure falls to <paramref name="stopAt"/>.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.Backward(System.Double,System.Double,System.Double,System.Nullable{System.Double})">
+            <summary>
+            From (xEnd, pEnd) back towards <paramref name="start"/>; stops where
+            the required upstream pressure rises to <paramref name="stopAt"/>.
+            Segments are returned in flow order.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.AddMaopWarning(System.String,System.Double,System.Double,System.Collections.Generic.List{NaturalGasPipeline.Network.SegmentResult},System.Collections.Generic.List{System.String})">
+            <summary>
+            Compares the highest pressure in a section (section inlet and every
+            segment end) with the MAOP of the criteria, when one is given. The
+            maximum is not always at the inlet: downhill stretches can regain
+            pressure. Pressures are absolute on both sides.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.SummariseSegmentWarnings(System.Collections.Generic.IEnumerable{NaturalGasPipeline.Network.SegmentResult})">
+            <summary>
+            Segment warnings of one section, one line per kind. Warnings that differ
+            only in their numbers (e.g. "Z model used outside its validated range at
+            P2 = 19580.1 kPa" on every 1 km step) are collapsed into the first one
+            plus a count, so a long section does not produce hundreds of lines.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.AddVelocityCheck(NaturalGasPipeline.Network.PipelineSection,System.Collections.Generic.List{NaturalGasPipeline.Network.SegmentResult},System.Collections.Generic.List{System.String})">
+             <summary>
+             Velocity and erosional ratio at every segment end of a section; the
+             maxima are stored on the section and checked against the criteria.
+            
+             Density at a segment end: ρ = ρ̄·P/P̄, i.e. the segment's average Z
+             is kept over the segment (ρ = P·M/(Z·R·T)). Over a marching step
+             (≤ 1 km by default) Z changes by well under 0.1 %, so this error is
+             negligible against the velocity limits being checked. The segment
+             inlet is covered by the previous segment's end, and the section inlet
+             is the highest-pressure (lowest-velocity) point, so ends suffice.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PlanningRun.Build(System.String,System.Collections.Generic.List{System.ValueTuple{System.Double,System.Double,System.Double}},System.Collections.Generic.List{System.Collections.Generic.List{NaturalGasPipeline.Network.SegmentResult}},System.Collections.Generic.List{System.String})">
+            <summary>
+            Assembles a plan. <paramref name="sections"/> has one entry more than
+            <paramref name="stations"/> (A → first station, …, last station → B).
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.RouteProfile">
+            <summary>Route profile with linear elevation between surveyed points (chainage from 0 at A).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.RouteProfile.Segment(System.Double,System.Double)">
+            <summary>Segment from x over length (must not cross a survey point).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.RouteProfile.StepLength(System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>Next step from x towards target, ending at the next survey point at the latest.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NodeKind">
+            <summary>Boundary condition of a node.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Network.NodeKind.FixedPressure">
+            <summary>Pressure is known (supply or regulated delivery); its net flow is a result.</summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Network.NodeKind.FixedFlow">
+            <summary>Net withdrawal is known (positive: gas leaves the network; negative: injection); pressure is a result.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NetworkNode">
+            <summary>A node of a gas network.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.NetworkNode.FixedPressure">
+            <summary>Set for <see cref="F:NaturalGasPipeline.Network.NodeKind.FixedPressure"/> nodes.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.NetworkNode.Withdrawal">
+            <summary>Net mass flow leaving the network here (negative = injection). Zero for junctions.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkNode.WithFlow(System.String,UnitsNet.MassFlow)">
+            <param name="id">Node id.</param>
+            <param name="withdrawal">Positive: delivery (gas leaves); negative: injection; zero: junction.</param>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NetworkPipe">
+            <summary>
+            A pipe between two nodes. <see cref="P:NaturalGasPipeline.Core.Pipeline.PipeSegment.ElevationChange"/> is
+            z(To) − z(From). Positive flow goes From → To; the solver reverses the
+            segment when the gas flows the other way.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkPipe.#ctor(System.String,System.String,System.String,NaturalGasPipeline.Core.Pipeline.PipeSegment,UnitsNet.Temperature,NaturalGasPipeline.Network.ISegmentModel)">
+            <summary>
+            A pipe between two nodes. <see cref="P:NaturalGasPipeline.Core.Pipeline.PipeSegment.ElevationChange"/> is
+            z(To) − z(From). Positive flow goes From → To; the solver reverses the
+            segment when the gas flows the other way.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.GasNetwork">
+            <summary>
+            A steady-state gas network: nodes and pipes. Validated on construction:
+            unique ids, pipes between existing distinct nodes, at least one
+            fixed-pressure node, and every node connected to a fixed-pressure node.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NetworkSolver">
+             <summary>
+             Steady-state solution of a gas network by the nodal method:
+             unknowns are the pressures of the fixed-flow nodes, equations are the
+             mass balances Σ inflow − Σ outflow − withdrawal = 0 at those nodes.
+             Solved by Newton's method with a central-difference Jacobian (each pipe
+             flow depends only on its two end pressures) and a backtracking line
+             search on the largest imbalance.
+            
+             Pipe flows come from each pipe's <see cref="T:NaturalGasPipeline.Network.ISegmentModel"/>, so any
+             segment calculation can be used. Flow reversal is handled by solving the
+             segment in the other direction (elevation change negated).
+             Friction models that are undefined in the laminar–turbulent transition
+             (Colebrook, Haaland, Swamee-Jain) can fail on nearly idle pipes of a
+             loop; Churchill covers every regime.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkSolver.#ctor(System.Double,System.Int32)">
+            <param name="relativeMassTolerance">Converged when every nodal imbalance is below this fraction of the total withdrawal (or of 1 kg/s if larger).</param>
+            <param name="maxIterations">Newton iteration limit; exceeding it throws.</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkSolver.Solve(NaturalGasPipeline.Network.GasNetwork,System.Collections.Generic.IReadOnlyDictionary{System.String,UnitsNet.Pressure})">
+            <param name="network">The network.</param>
+            <param name="initialPressures">Optional starting pressures of fixed-flow nodes; the default is 90 % of the mean fixed pressure (a start with zero pressure differences gives zero flows, where turbulent flow laws have an infinite slope).</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkSolver.Flow(NaturalGasPipeline.Network.NetworkPipe,System.Double,System.Double,NaturalGasPipeline.Network.SegmentResult@)">
+            <summary>Signed mass flow From → To (kg/s); the segment is reversed for negative flow.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NetworkNodeResult">
+            <summary>Solved node: pressure and net withdrawal (negative = the node supplies gas).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkNodeResult.#ctor(System.String,NaturalGasPipeline.Network.NodeKind,UnitsNet.Pressure,UnitsNet.MassFlow)">
+            <summary>Solved node: pressure and net withdrawal (negative = the node supplies gas).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NetworkPipeResult">
+            <summary>
+            Solved pipe. <see cref="P:NaturalGasPipeline.Network.NetworkPipeResult.MassFlow"/> is positive From → To. The segment
+            result is in the actual flow direction (null when the flow is exactly zero).
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NetworkPipeResult.#ctor(System.String,System.String,System.String,UnitsNet.MassFlow,NaturalGasPipeline.Network.SegmentResult)">
+            <summary>
+            Solved pipe. <see cref="P:NaturalGasPipeline.Network.NetworkPipeResult.MassFlow"/> is positive From → To. The segment
+            result is in the actual flow direction (null when the flow is exactly zero).
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.NetworkSolution.LargestImbalance">
+            <summary>Largest nodal mass imbalance at convergence.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.ProfilePoint">
+            <summary>A surveyed point of the route: distance along the pipe and elevation.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.ProfilePoint.#ctor(UnitsNet.Length,UnitsNet.Length)">
+            <summary>A surveyed point of the route: distance along the pipe and elevation.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.PipelineProfile">
+            <summary>
+            Builds pipe segments from a route profile. Each pair of consecutive
+            points becomes one segment with a uniform slope; long segments can be
+            subdivided, because Z, μ and f are evaluated once per segment (at P_avg):
+            the error of that approximation falls as 1/N² (see tests).
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PipelineProfile.ToSegments(System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.ProfilePoint},UnitsNet.Length,UnitsNet.Length)">
+            <param name="points">At least two points, chainage strictly increasing (measured along the pipe).</param>
+            <param name="internalDiameter">Internal diameter of every segment.</param>
+            <param name="absoluteRoughness">Absolute wall roughness of every segment.</param>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PipelineProfile.Subdivide(NaturalGasPipeline.Core.Pipeline.PipeSegment,System.Int32)">
+            <summary>Splits a segment into N equal parts with the same slope.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.ISegmentModel">
+            <summary>
+            One pipe segment as seen by a network or a series system: pressures and
+            mass flow (mass is what is conserved at a node). Any segment calculation
+            can take part by implementing this interface.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.ISegmentModel.Name">
+            <summary>Short, human-readable name for reports.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.ISegmentModel.SolveMassFlow(NaturalGasPipeline.Core.Pipeline.PipeSegment,UnitsNet.Temperature,UnitsNet.Pressure,UnitsNet.Pressure)">
+            <summary>
+            Mass flow from inlet to outlet for given end pressures. Throws
+            <see cref="T:NaturalGasPipeline.Core.Flow.NoForwardFlowException"/> when the pressures do not drive
+            flow in that direction.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.SegmentResult">
+             <summary>
+             State of one solved segment.
+            
+             The total pressure drop is split into an elevation (hydrostatic) part and
+             a friction part:
+               ΔP_elevation = ρ_lm·g·Δz,   ρ_lm = ρ̄·P_lm/P_avg,   P_lm = (P1 − P2)/ln(P1/P2)
+               ΔP_friction  = ΔP_total − ΔP_elevation
+             ρ̄ is the density at the solver's average pressure; scaling it to the
+             log-mean pressure makes the elevation part exact for a static gas column
+             at constant Z (P2 = P1·e^(−s/2)). The split is a definition for
+             reporting: the momentum balance itself is integrated as a whole (P² form).
+             Uphill ΔP_elevation &gt; 0; downhill it is negative (the gas regains pressure).
+             </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.SegmentResult.AverageDensity">
+            <summary>Gas density at <see cref="P:NaturalGasPipeline.Network.SegmentResult.AveragePressure"/> and <see cref="P:NaturalGasPipeline.Network.SegmentResult.Temperature"/>.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.SegmentResult.ElevationPressureDrop">
+            <summary>ρ_lm·g·Δz (negative downhill).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.SegmentResult.FrictionPressureDrop">
+            <summary>ΔP_total − ΔP_elevation.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.IsothermalSegmentModel">
+            <summary>
+            The SI isothermal solver of the Hydraulics module
+            (<see cref="T:NaturalGasPipeline.Hydraulics.IsothermalGasFlowSolver"/>): Darcy friction from any
+            <see cref="T:NaturalGasPipeline.Hydraulics.IFrictionFactorModel"/>, exact physical constants.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.FlowEquationSegmentModel">
+            <summary>
+            A pipeline flow equation of the Correlations module (Weymouth,
+            Panhandle, General Flow / AGA). Mass flow is converted to standard flow
+            at the equation's base conditions with M = G·M_air and the stated base Z.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.SystemElement">
+            <summary>One element of a series system, between two nodes.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.SystemElement.#ctor(System.String)">
+            <summary>One element of a series system, between two nodes.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.PipeElement">
+            <summary>
+            An isothermal pipe segment at its own flowing temperature. The gas
+            leaves it at that temperature (heat exchange with the surroundings is
+            assumed complete); a warning is issued when the gas enters more than
+            <see cref="F:NaturalGasPipeline.Network.SeriesSystem.TemperatureMismatchWarning"/> away from it.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.PipeElement.#ctor(System.String,NaturalGasPipeline.Core.Pipeline.PipeSegment,UnitsNet.Temperature,NaturalGasPipeline.Network.ISegmentModel)">
+            <summary>
+            An isothermal pipe segment at its own flowing temperature. The gas
+            leaves it at that temperature (heat exchange with the surroundings is
+            assumed complete); a warning is issued when the gas enters more than
+            <see cref="F:NaturalGasPipeline.Network.SeriesSystem.TemperatureMismatchWarning"/> away from it.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.CompressorElement">
+            <summary>
+            A compressor station with a fixed overall pressure ratio. The suction
+            temperature is the temperature arriving from upstream.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CompressorElement.#ctor(System.String,NaturalGasPipeline.Compression.CompressorStation,System.Double)">
+            <summary>
+            A compressor station with a fixed overall pressure ratio. The suction
+            temperature is the temperature arriving from upstream.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.CoolerElement">
+            <summary>A cooler (e.g. station aftercooler): sets the outlet temperature, with an explicit pressure drop.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.CoolerElement.#ctor(System.String,UnitsNet.Temperature,UnitsNet.Pressure)">
+            <summary>A cooler (e.g. station aftercooler): sets the outlet temperature, with an explicit pressure drop.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.NodeState">
+            <summary>Pressure and temperature at a node (between elements).</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.NodeState.#ctor(System.String,UnitsNet.Pressure,UnitsNet.Temperature)">
+            <summary>Pressure and temperature at a node (between elements).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.SeriesSystem">
+            <summary>
+            Elements in series carrying one mass flow (no branches): pipe segments,
+            compressor stations and coolers. Solves
+            - forward:  inlet pressure and mass flow → every node;
+            - backward: outlet pressure and mass flow → every node (compressors at a
+                        fixed ratio; temperatures do not depend on pressure in these
+                        models, so they are known before the pressure march);
+            - flow:     inlet and outlet pressures → mass flow (Brent's method).
+            </summary>
+        </member>
+        <member name="F:NaturalGasPipeline.Network.SeriesSystem.TemperatureMismatchWarning">
+            <summary>Gas entering a pipe more than this away from its flowing temperature triggers a warning.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.SeriesSystem.SolveMassFlow(UnitsNet.Pressure,UnitsNet.Temperature,UnitsNet.Pressure,UnitsNet.MassFlow,System.Double)">
+            <summary>
+            Mass flow that delivers <paramref name="outletPressure"/> from
+            <paramref name="inletPressure"/>. Flows the system cannot carry count
+            as "too much flow" while bracketing.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.SeriesSystem.TemperatureProfile(UnitsNet.Temperature)">
+            <summary>Temperature at every node; independent of pressure in these models.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.SeriesSolution">
+            <summary>Solved series system.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.SeriesSolution.Nodes">
+            <summary>Inlet node, then the node after each element.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.SeriesSolution.ElementResults">
+            <summary>
+            One entry per element: <see cref="T:NaturalGasPipeline.Network.SegmentResult"/>, <see cref="T:NaturalGasPipeline.Compression.CompressorStationResult"/>
+            or the <see cref="T:NaturalGasPipeline.Network.CoolerElement"/> itself.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.MaximumSpacingPlacement">
+             <summary>
+             Method 1 — greedy maximum spacing (hydraulic marching).
+            
+             1. start at A with the inlet pressure;
+             2. march along the route until the pressure falls to the minimum suction
+                pressure; place a station there, which restores the discharge pressure;
+             3. repeat until B;
+             4. the last station discharges exactly what B needs (backward march from
+                B). If the gas would arrive below the target without falling to the
+                minimum suction, one more station is placed where the backward profile
+                from B reaches the discharge pressure.
+            
+             Gives the minimum number of stations for the pressure limits, with the
+             terrain. It does not minimise power or cost, and the last station can be
+             much smaller than the others (use <see cref="T:NaturalGasPipeline.Network.EqualRatioPlacement"/>).
+             See Edgar, Himmelblau &amp; Bickel (SPE J. 18(2), 1978) for the cost-optimal problem.
+             </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.EqualRatioPlacement">
+             <summary>
+             Method 2 — N stations with equal pressure ratios.
+            
+             Every station discharges at the station discharge pressure P_d and takes
+             suction at a common pressure P_s, so every ratio is P_d / P_s:
+             1. the last station sits where the backward profile from B (at the
+                delivery target) reaches P_d — its position does not depend on P_s;
+             2. P_s is the root (Brent's method) of
+                g(P_s) = (position of the N-th point where the forward march from A,
+                restarting at P_d after each station, falls to P_s) − (position of 1).
+                Raising P_s brings the stations closer, so g decreases.
+            
+             This is the usual industry heuristic. Equal ratios minimise compression
+             energy for stations with the same suction temperature, but not total
+             cost once station capital cost counts (Edgar, Himmelblau &amp; Bickel 1978).
+             N must be at least the count found by <see cref="T:NaturalGasPipeline.Network.MaximumSpacingPlacement"/>;
+             with fewer stations P_s would have to fall below the minimum suction.
+             </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.EqualRatioPlacement.#ctor(System.Int32)">
+            <param name="stationCount">Number of stations N (≥ 1).</param>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationPlanningCriteria">
+            <summary>
+            Pressure criteria for placing compressor stations along a route.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.InletPressure">
+            <summary>Pressure at the start of the route (point A).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.DeliveryPressure">
+            <summary>Pressure required at the end of the route (point B).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.StationDischargePressure">
+            <summary>
+            Discharge pressure of the stations (their upper pressure limit).
+            null: equal to <see cref="P:NaturalGasPipeline.Network.StationPlanningCriteria.InletPressure"/>.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.MinimumSuctionPressure">
+            <summary>
+            Lowest acceptable suction pressure of a station.
+            null: equal to <see cref="P:NaturalGasPipeline.Network.StationPlanningCriteria.DeliveryPressure"/>.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.MaximumStepLength">
+            <summary>
+            Longest pipe segment used while marching. Z, μ and f are evaluated
+            once per segment, so shorter steps are more accurate (error ∝ 1/N²,
+            see SeriesSystemTests); station positions are then located exactly
+            inside a step by root finding.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.MaximumAllowableOperatingPressure">
+            <summary>
+            Maximum allowable operating pressure of the line pipe, ABSOLUTE
+            (convert a code design pressure with
+            <c>NaturalGasPipeline.Mechanics.SteelPipeDesign.ToAbsolute</c>).
+            null: not checked. When set, every point of every section is compared
+            with it, so pressure regained in downhill stretches is caught too;
+            exceedances are reported as warnings, not exceptions.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.MaximumGasVelocity">
+            <summary>
+            Design limit on the mean gas velocity. null: not checked (the
+            velocity is still reported per section). Typical long-distance
+            transmission velocities are 4.6–12 m/s (White et al., Compression
+            Machinery for Oil and Gas, 2019, ch. 9); the limit is the user's choice.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningCriteria.ErosionalVelocityConstant">
+            <summary>
+            API RP 14E constant C for the erosional-velocity check V ≤ C/√ρ
+            (US units; 100 continuous, 125 intermittent, 60 corrosive service).
+            Always checked; see <c>GasVelocityCalculator</c>.
+            </summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.StationPlanningCriteria.Create(UnitsNet.Pressure,UnitsNet.Pressure,System.Nullable{UnitsNet.Pressure},System.Nullable{UnitsNet.Pressure},System.Nullable{UnitsNet.Length},System.Nullable{UnitsNet.Pressure},System.Nullable{UnitsNet.Speed},System.Double)">
+            <summary>
+            Factory for callers compiled with C# 9–10 (Unity 6): constructors of
+            types with <c>required</c> members are blocked for compilers that do
+            not support them, so object initialisers cannot be used there.
+            </summary>
+            <param name="inletPressure">Pressure at A.</param>
+            <param name="deliveryPressure">Target pressure at B.</param>
+            <param name="stationDischargePressure">null: equal to the inlet pressure.</param>
+            <param name="minimumSuctionPressure">null: equal to the delivery pressure.</param>
+            <param name="maximumStepLength">null: 1 km.</param>
+            <param name="maximumAllowableOperatingPressure">Absolute MAOP; null: not checked.</param>
+            <param name="maximumGasVelocity">Velocity limit; null: not checked.</param>
+            <param name="erosionalVelocityConstant">API RP 14E C; default 100 (continuous service).</param>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationPlanningProblem">
+            <summary>
+            Everything a placement method needs: the route, the pipe, the design flow
+            and the pressure criteria. The gas and the pipe-flow model belong to the
+            <see cref="T:NaturalGasPipeline.Network.CompressorStationPlanner"/>.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningProblem.Route">
+            <summary>Surveyed route profile from A (first point) to B (last point).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningProblem.MassFlow">
+            <summary>Design mass flow (what the solver conserves).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlanningProblem.StandardFlow">
+            <summary>
+            The standard flow the design was specified in, when it was; kept for
+            reporting. Use <see cref="M:NaturalGasPipeline.Network.CompressorStationPlanner.ProblemFor(System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.ProfilePoint},UnitsNet.Length,UnitsNet.Length,NaturalGasPipeline.Core.Flow.StandardVolumetricFlow,NaturalGasPipeline.Network.StationPlanningCriteria)"/> to
+            build a problem from a standard flow with an explicit conversion.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationSetting">
+            <summary>A station imposed on a layout: where it is and what it discharges.</summary>
+        </member>
+        <member name="M:NaturalGasPipeline.Network.StationSetting.#ctor(UnitsNet.Length,UnitsNet.Pressure)">
+            <summary>A station imposed on a layout: where it is and what it discharges.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.IStationPlacementMethod">
+            <summary>
+            A way of deciding how many stations there are and where they go.
+            Implemented: <see cref="T:NaturalGasPipeline.Network.MaximumSpacingPlacement"/> (method 1) and
+            <see cref="T:NaturalGasPipeline.Network.EqualRatioPlacement"/> (method 2). Optimisation methods
+            (minimum power, minimum cost, dynamic programming over candidate sites)
+            implement this interface too and score candidate layouts with
+            <see cref="M:NaturalGasPipeline.Network.CompressorStationPlanner.EvaluateLayout(NaturalGasPipeline.Network.StationPlanningProblem,System.Collections.Generic.IReadOnlyList{NaturalGasPipeline.Network.StationSetting})"/>.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.IStationPlacementMethod.Name">
+            <summary>Short name for reports.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.PlannedStation">
+            <summary>A compressor station of a plan.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PlannedStation.Chainage">
+            <summary>Distance from A along the pipe.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PlannedStation.DistanceFromPrevious">
+            <summary>From A or from the previous station.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PlannedStation.IsentropicDischargeTemperature">
+            <summary>Discharge temperature of ideal (η = 1) single-stage compression; real machines run hotter.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PlannedStation.IsentropicPower">
+            <summary>ṁ·H_s: the minimum power; the real value follows from the hardware chosen.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.PipelineSection">
+            <summary>Pipe between two consecutive points of a plan (A, stations, B).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PipelineSection.FrictionPressureDrop">
+            <summary>Sum of the segments' friction drops.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PipelineSection.ElevationPressureDrop">
+            <summary>Sum of the segments' elevation drops (negative if the section descends overall).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PipelineSection.MaximumVelocity">
+            <summary>
+            Highest mean gas velocity in the section (at its lowest-pressure
+            point). Zero for a section without segments.
+            </summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PipelineSection.MaximumVelocityChainage">
+            <summary>Chainage where <see cref="P:NaturalGasPipeline.Network.PipelineSection.MaximumVelocity"/> occurs.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.PipelineSection.MaximumErosionalRatio">
+            <summary>
+            Highest V / V_erosional in the section (API RP 14E with the criteria's
+            C). Above 1 the erosional limit is exceeded.
+            </summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationPlan">
+            <summary>A solved station layout.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlan.Method">
+            <summary>Name of the placement method (or "Evaluated layout").</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlan.StandardFlow">
+            <summary>The standard flow the design was specified in, if it was.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlan.DeliveryPressure">
+            <summary>Pressure actually delivered at B.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationPlan.Sections">
+            <summary>A → first station, …, last station → B.</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationCountOption">
+            <summary>One row of the station-count comparison (method 2 with N stations).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationCountOption.Feasible">
+            <summary>False when N stations cannot meet the criteria; <see cref="P:NaturalGasPipeline.Network.StationCountOption.Plan"/> is then null.</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationCountOption.Reason">
+            <summary>Why the option is infeasible (null when feasible).</summary>
+        </member>
+        <member name="P:NaturalGasPipeline.Network.StationCountOption.PressureRatio">
+            <summary>Pressure ratio shared by every station (NaN when infeasible).</summary>
+        </member>
+        <member name="T:NaturalGasPipeline.Network.StationCountComparison">
+            <summary>
+            Number of stations against power: the minimum-station plan (method 1) and
+            equal-ratio plans (method 2) for N = N_min, N_min + 1, …
+            More stations mean lower ratios and less power, but more stations to build.
+            </summary>
+        </member>
+        <member name="T:Microsoft.CodeAnalysis.EmbeddedAttribute">
+            <summary>
+            A special attribute recognized by Roslyn, that marks a type as "embedded", meaning it won't ever be visible from other assemblies.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute">
+            <summary>
+            Indicates that compiler support for a particular feature is required for the location where this attribute is applied.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.#ctor(System.String)">
+            <summary>
+            Creates a new instance of the <see cref="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute"/> type.
+            </summary>
+            <param name="featureName">The name of the feature to indicate.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName">
+            <summary>
+            The name of the compiler feature.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.IsOptional">
+            <summary>
+            If true, the compiler can choose to allow access to the location where this attribute is applied if it does not understand <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/>.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RefStructs">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the ref structs C# feature.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RequiredMembers">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the required members C# feature.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ModuleInitializerAttribute">
+             <summary>
+             Used to indicate to the compiler that a method should be called
+             in its containing module's initializer.
+             </summary>
+             <remarks>
+             When one or more valid methods
+             with this attribute are found in a compilation, the compiler will
+             emit a module initializer which calls each of the attributed methods.
+            
+             Certain requirements are imposed on any method targeted with this attribute:
+             - The method must be `static`.
+             - The method must be an ordinary member method, as opposed to a property accessor, constructor, local function, etc.
+             - The method must be parameterless.
+             - The method must return `void`.
+             - The method must not be generic or be contained in a generic type.
+             - The method's effective accessibility must be `internal` or `public`.
+            
+             The specification for module initializers in the .NET runtime can be found here:
+             https://github.com/dotnet/runtime/blob/main/docs/design/specs/Ecma-335-Augments.md#module-initializer
+             </remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute">
+            <summary>
+            An attribute that allows parameters to receive the expression of other parameters.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute"/> class.
+            </summary>
+            <param name="parameterName">The condition parameter value.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CallerArgumentExpressionAttribute.ParameterName">
+            <summary>
+            Gets the parameter name the expression is retrieved from.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute">
+            <summary>
+            Specifies the priority of a member in overload resolution. When unspecified, the default priority is 0.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute.#ctor(System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute"/> class.
+            </summary>
+            <param name="priority">The priority of the attributed member. Higher numbers are prioritized, lower numbers are deprioritized. 0 is the default if no attribute is present.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.OverloadResolutionPriorityAttribute.Priority">
+            <summary>
+            The priority of the member.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.InterpolatedStringHandlerAttribute">
+            <summary>
+            Indicates the attributed type is to be used as an interpolated string handler.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.IsExternalInit">
+            <summary>
+            Reserved to be used by the compiler for tracking metadata.
+            This class should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ParamCollectionAttribute">
+            <summary>
+            Indicates that a method will allow a variable number of arguments in its invocation.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.RequiresLocationAttribute">
+            <summary>
+            Reserved for use by a compiler for tracking metadata.
+            This attribute should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute">
+            <summary>
+            When applied to an attribute class, instructs the compiler to flow applications of that attribute,
+            from source code down to compiler-generated symbols. This can help IL-based analysis tools.
+            </summary>
+            <remarks>
+            One example where this attribute applies is in C# primary constructor parameters. If an attribute
+            marked with <see cref="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute"/> gets applied to a primary constructor
+            parameter, the attribute will also be applied to any compiler-generated fields storing that parameter.
+            </remarks>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.CompilerLoweringPreserveAttribute"/> class.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.SkipLocalsInitAttribute">
+            <summary>
+            Used to indicate to the compiler that the <c>.locals init</c> flag should not be set in method headers.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CollectionBuilderAttribute.#ctor(System.Type,System.String)">
+            <summary>
+            Initialize the attribute to refer to the <paramref name="methodName"/> method on the <paramref name="builderType"/> type.
+            </summary>
+            <param name="builderType">The type of the builder to use to construct the collection.</param>
+            <param name="methodName">The name of the method on the builder to use to construct the collection.</param>
+            <remarks>
+            <paramref name="methodName"/> must refer to a static method that accepts a single parameter of
+            type <see cref="T:System.ReadOnlySpan`1"/> and returns an instance of the collection being built containing
+            a copy of the data from that span.  In future releases of .NET, additional patterns may be supported.
+            </remarks>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CollectionBuilderAttribute.BuilderType">
+            <summary>
+            Gets the type of the builder to use to construct the collection.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CollectionBuilderAttribute.MethodName">
+            <summary>
+            Gets the name of the method on the builder to use to construct the collection.
+            </summary>
+            <remarks>
+            This should match the metadata name of the target method.
+            For example, this might be ".ctor" if targeting the type's constructor.
+            </remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute">
+            <summary>
+            Indicates which arguments to a method involving an interpolated string handler should be passed to that handler.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute"/> class.
+            </summary>
+            <param name="argument">The name of the argument that should be passed to the handler.</param>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.#ctor(System.String[])">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute"/> class.
+            </summary>
+            <param name="arguments">The names of the arguments that should be passed to the handler.</param>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.InterpolatedStringHandlerArgumentAttribute.Arguments">
+            <summary>
+            Gets the names of the arguments that should be passed to the handler.
+            </summary>
+            <remarks><see langword="null"/> may be used as the name of the receiver in an instance method.</remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.ExtensionMarkerAttribute">
+            <summary>
+            This attribute is used to mark extension members and associate them with a specific marker type (which provides detailed information about an extension block and its receiver parameter).
+            This attribute should not be used by developers in source code.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.ExtensionMarkerAttribute.#ctor(System.String)">
+            <summary>Initializes a new instance of the <see cref="T:System.Runtime.CompilerServices.ExtensionMarkerAttribute"/> class.</summary>
+            <param name="name">The name of the marker type this extension member is associated with.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.ExtensionMarkerAttribute.Name">
+            <summary>The name of the marker type this extension member is associated with.</summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.RequiredMemberAttribute">
+            <summary>
+            Specifies that a type has required members or that a member is required.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute"/> class.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute"/> class with the specified message.
+            </summary>
+            <param name="message">An optional message associated with this attribute instance.</param>
+        </member>
+        <member name="P:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.Message">
+            <summary>
+            Returns the optional message associated with this attribute instance.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.Versioning.RequiresPreviewFeaturesAttribute.Url">
+            <summary>
+            Returns the optional URL associated with this attribute instance.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute">
+            <summary>
+            Specifies the syntax used in a string.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String)">
+            <summary>
+            Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.
+            </summary>
+            <param name="syntax">The syntax identifier.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String,System.Object[])">
+            <summary>Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.</summary>
+            <param name="syntax">The syntax identifier.</param>
+            <param name="arguments">Optional arguments associated with the specific syntax employed.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Syntax">
+            <summary>Gets the identifier of the syntax used.</summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Arguments">
+            <summary>Optional arguments associated with the specific syntax employed.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.CompositeFormat">
+            <summary>The syntax identifier for strings containing composite formats for string formatting.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateOnlyFormat">
+            <summary>The syntax identifier for strings containing date format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateTimeFormat">
+            <summary>The syntax identifier for strings containing date and time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.EnumFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Enum"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.GuidFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Guid"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Json">
+            <summary>The syntax identifier for strings containing JavaScript Object Notation (JSON).</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.NumericFormat">
+            <summary>The syntax identifier for strings containing numeric format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Regex">
+            <summary>The syntax identifier for strings containing regular expressions.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeOnlyFormat">
+            <summary>The syntax identifier for strings containing time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeSpanFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.TimeSpan"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Uri">
+            <summary>The syntax identifier for strings containing URIs.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Xml">
+            <summary>The syntax identifier for strings containing XML.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute">
+            <summary>
+            Specifies that this constructor sets all required members for the current type,
+            and callers do not need to set any required members themselves.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.UnscopedRefAttribute">
+            <summary>
+            Used to indicate a byref escapes and is not scoped.
+            </summary>
+            <remarks>
+            <para>
+            There are several cases where the C# compiler treats a <see langword="ref"/> as implicitly
+            <see langword="scoped"/> - where the compiler does not allow the <see langword="ref"/> to escape the method.
+            </para>
+            <para>
+            For example:
+            <list type="number">
+                <item><see langword="this"/> for <see langword="struct"/> instance methods.</item>
+                <item><see langword="ref"/> parameters that refer to <see langword="ref"/> <see langword="struct"/> types.</item>
+                <item><see langword="out"/> parameters.</item>
+            </list>
+            </para>
+            <para>
+            This attribute is used in those instances where the <see langword="ref"/> should be allowed to escape.
+            </para>
+            <para>
+            Applying this attribute, in any form, has impact on consumers of the applicable API. It is necessary for
+            API authors to understand the lifetime implications of applying this attribute and how it may impact their users.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute">
+            <summary>
+            Specifies that the method or property will ensure that the listed field and property
+            members have not-null values when returning with the specified return value condition.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String)">
+            <summary>
+            Initializes the attribute with the specified return value condition and a field or property member.
+            </summary>
+            <param name="returnValue">The return value condition. If the method returns this value, the associated parameter will not be null.</param>
+            <param name="member">The field or property member that is promised to be not-null.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.#ctor(System.Boolean,System.String[])">
+            <summary>
+            Initializes the attribute with the specified return value condition and list of field and property members.
+            </summary>
+            <param name="returnValue">The return value condition. If the method returns this value, the associated parameter will not be null.</param>
+            <param name="members">The list of field and property members that are promised to be not-null.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.ReturnValue">
+            <summary>
+            Gets the return value condition.
+            </summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullWhenAttribute.Members">
+            <summary>
+            Gets field or property member names.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute">
+            <summary>
+            Specifies that the method or property will ensure that the listed field and property members have not-null values.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String)">
+            <summary>
+            Initializes the attribute with a field or property member.
+            </summary>
+            <param name="member">The field or property member that is promised to be not-null.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.#ctor(System.String[])">
+            <summary>
+            Initializes the attribute with the list of field and property members.
+            </summary>
+            <param name="members">The list of field and property members that are promised to be not-null.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.MemberNotNullAttribute.Members">
+            <summary>
+            Gets field or property member names.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute">
+            <summary>
+            Indicates that an API is experimental and it may change in the future.
+            </summary>
+            <remarks>
+            This attribute allows call sites to be flagged with a diagnostic that indicates that an experimental
+            feature is used. Authors can use this attribute to ship preview features in their assemblies.
+            </remarks>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute"/> class,
+            specifying the ID that the compiler will use when reporting a use of the API the attribute applies to.
+            </summary>
+            <param name="diagnosticId">The ID that the compiler will use when reporting a use of the API the attribute applies to.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.DiagnosticId">
+            <summary>
+            Gets the ID that the compiler will use when reporting a use of the API the attribute applies to.
+            </summary>
+            <value>The unique diagnostic ID.</value>
+            <remarks>
+            The diagnostic ID is shown in build output for warnings and errors.
+            <para>This property represents the unique ID that can be used to suppress the warnings or errors, if needed.</para>
+            </remarks>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.UrlFormat">
+            <summary>
+            Gets or sets the URL for corresponding documentation.
+            The API accepts a format string instead of an actual URL, creating a generic URL that includes the diagnostic ID.
+            </summary>
+            <value>The format string that represents a URL to corresponding documentation.</value>
+            <remarks>An example format string is <c>https://contoso.com/obsoletion-warnings/{0}</c>.</remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute">
+            <summary>
+            Indicates that the specified method parameter expects a constant.
+            </summary>
+            <remarks>
+            This can be used to inform tooling that a constant should be used as an argument for the annotated parameter.
+            </remarks>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute.Min">
+            <summary>
+            Indicates the minimum bound of the expected constant, inclusive.
+            </summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ConstantExpectedAttribute.Max">
+            <summary>
+            Indicates the maximum bound of the expected constant, inclusive.
+            </summary>
+        </member>
+    </members>
+</doc>
