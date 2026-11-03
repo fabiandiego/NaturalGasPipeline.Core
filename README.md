@@ -105,7 +105,7 @@ scripts/build-unity-plugins.sh       (Linux)
 ```
 
 The output goes to `artifacts/UnityPlugins`; copy it to `Assets/_Project/Plugins/Engine` in the Unity project.
-CI also publishes the same DLLs to the orphan branch `unity-plugins` on every push; its `SOURCE.txt` names the branch and commit they were built from.
+CI also publishes the same DLLs to the orphan branch `unity-plugins` on every push to `master`; its `SOURCE.txt` names the branch and commit they were built from.
 netstandard2.1 lacks some .NET 8 APIs: use `Guard.NotNull` and `Guard.IsDefined` (Core.Common) instead of `ArgumentNullException.ThrowIfNull` and `Enum.IsDefined<T>`; the compiler attributes behind `init` and `required` come from PolySharp.
 
 ## Build and test
@@ -113,3 +113,7 @@ netstandard2.1 lacks some .NET 8 APIs: use `Guard.NotNull` and `Guard.IsDefined`
 Open `NaturalGasPipeline.sln` in Visual Studio 2022 and run all tests from Test Explorer
 (or `dotnet test` in the repository root). Tests write their intermediate data with `ITestOutputHelper`.
 GitHub Actions (`.github/workflows/ci.yml`) builds both target frameworks and runs every test on each push.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
